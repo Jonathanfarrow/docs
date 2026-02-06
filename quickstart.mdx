@@ -1,11 +1,11 @@
 ---
 title: "Quickstart"
-description: "Get EventGraphDB running and log your first event in under 5 minutes."
+description: "Get Minns Memory Layer running and log your first event in under 5 minutes."
 ---
 
 ## Prerequisites
 
-- **EventGraphDB server** running locally or remotely (default: `http://localhost:3000`)
+- **Minns Memory Layer server** running locally or remotely (default: `https://your-instance.minns.ai`)
 - **Node.js** 18 or higher
 - **npm** or your preferred package manager
 
@@ -31,7 +31,7 @@ pnpm add minns-sdk
 import { createClient } from 'minns-sdk';
 
 const client = createClient({
-  baseUrl: "http://localhost:3000",
+  baseUrl: "https://your-instance.minns.ai",
   defaultAsync: true,
   autoBatch: true,
   batchInterval: 100,

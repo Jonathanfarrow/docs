@@ -1,7 +1,7 @@
 ---
 title: "Integration examples"
 sidebarTitle: "Examples"
-description: "End-to-end examples showing how to integrate EventGraphDB into real agent workflows using the minns-sdk."
+description: "End-to-end examples showing how to integrate Minns Memory Layer into real agent workflows using the minns-sdk."
 ---
 
 ## Client setup
@@ -10,7 +10,7 @@ description: "End-to-end examples showing how to integrate EventGraphDB into rea
 import { createClient } from 'minns-sdk';
 
 const client = createClient({
-  baseUrl: "http://localhost:3000",
+  baseUrl: "https://your-instance.minns.ai",
   defaultAsync: true,
   autoBatch: true,
   batchInterval: 100,
@@ -173,7 +173,7 @@ import { createClient } from 'minns-sdk';
 
 async function agentLoop(userId: string) {
   const client = createClient({
-    baseUrl: "http://localhost:3000",
+    baseUrl: "https://your-instance.minns.ai",
     autoBatch: true,
     batchInterval: 100,
     batchMaxSize: 20,

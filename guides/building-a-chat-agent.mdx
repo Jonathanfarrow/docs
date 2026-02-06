@@ -6,7 +6,7 @@ description: "A deep dive into intent-driven agent architecture — from theory 
 
 Most "AI chatbots" are stateless wrappers around an LLM. They receive a message, generate a response, and forget everything. A true **agent** is fundamentally different: it perceives, thinks, acts, and *remembers* — building up knowledge over time that makes it better at its job.
 
-This guide walks you through the architecture behind intent-driven agents and builds a complete, production-ready chat agent using `minns-sdk` and EventGraphDB.
+This guide walks you through the architecture behind intent-driven agents and builds a complete, production-ready chat agent using `minns-sdk` and Minns Memory Layer.
 
 ---
 
@@ -41,7 +41,7 @@ Consider a customer who contacts your bot three times:
 2. **Wednesday**: "What should I watch?" → Bot has no idea they like Sci-Fi.
 3. **Friday**: "I tried to book but it failed" → Bot has no context about the failure.
 
-With an agent backed by EventGraphDB, every interaction is stored as an event. The agent forms memories, extracts claims ("User likes Sci-Fi"), and learns strategies ("When booking fails, offer alternative showtimes"). By Friday, the agent *knows* the user, *remembers* the failure, and *has a strategy* for recovery.
+With an agent backed by Minns Memory Layer, every interaction is stored as an event. The agent forms memories, extracts claims ("User likes Sci-Fi"), and learns strategies ("When booking fails, offer alternative showtimes"). By Friday, the agent *knows* the user, *remembers* the failure, and *has a strategy* for recovery.
 
 ---
 
@@ -157,7 +157,7 @@ graph TD
     I -->|respond_only| D[Deliver response]
     E --> O[Log outcome]
     O --> D
-    D --> L[Log to EventGraphDB]
+    D --> L[Log to Minns Memory Layer]
     L --> M[Memory + Strategy extraction]
 ```
 
@@ -182,7 +182,7 @@ import { createClient, buildSidecarInstruction, extractIntentAndResponse } from 
 import OpenAI from 'openai';
 
 const client = createClient({
-  baseUrl: "http://localhost:3000",
+  baseUrl: "https://your-instance.minns.ai",
   autoBatch: true,
   batchInterval: 100,
   batchMaxSize: 20,
@@ -292,7 +292,7 @@ IMPORTANT: Always include an intent block in your response, even if the action i
 
 ### Step 4: The retrieval layer
 
-Before every LLM call, the agent gathers context from EventGraphDB. This is the **Perceive** phase.
+Before every LLM call, the agent gathers context from Minns Memory Layer. This is the **Perceive** phase.
 
 ```typescript title="agent.ts"
 interface AgentContext {
@@ -362,7 +362,7 @@ async function gatherContext(
 ```
 
 <Info>
-  The three retrievals run in **parallel** with `Promise.all`. This keeps latency low — you're adding ~1 round-trip to EventGraphDB, not 3 sequential ones.
+  The three retrievals run in **parallel** with `Promise.all`. This keeps latency low — you're adding ~1 round-trip to Minns Memory Layer, not 3 sequential ones.
 </Info>
 
 ### Step 5: The LLM call + sidecar parse
@@ -497,7 +497,7 @@ async function cancelBooking(confirmationId: string): Promise<ActionResult> {
 
 ### Step 7: The logging layer
 
-The **Remember** phase. Every turn gets logged to EventGraphDB — the user message, the agent's reasoning, the action, and the outcome. This is what powers memory formation, claim extraction, and strategy learning.
+The **Remember** phase. Every turn gets logged to Minns Memory Layer — the user message, the agent's reasoning, the action, and the outcome. This is what powers memory formation, claim extraction, and strategy learning.
 
 ```typescript title="agent.ts"
 async function logTurn(
@@ -570,7 +570,7 @@ async function runAgent(userId: string) {
       // Determine the current goal from context
       const currentGoal = "book_movie";
 
-      // Gather context from EventGraphDB (parallel retrieval)
+      // Gather context from Minns Memory Layer (parallel retrieval)
       const agentContext = await gatherContext(sessionId, userId, currentGoal);
 
       // --- THINK ---
@@ -630,7 +630,7 @@ The agent you just built doesn't just respond — it **learns**. Here's what hap
 
 ### Claim extraction
 
-When you log a Context event with `enable_semantic: true` (the default for the SDK), EventGraphDB extracts atomic facts:
+When you log a Context event with `enable_semantic: true` (the default for the SDK), Minns Memory Layer extracts atomic facts:
 
 | User says | Extracted claim |
 | :--- | :--- |
@@ -642,13 +642,13 @@ On the next session, `searchClaims()` retrieves these facts and injects them int
 
 ### Episode formation
 
-Because every event carries the same `goal("book_movie", ...)`, EventGraphDB groups them into an **episode**. When `goalProgress` hits `1.0`, the episode completes and becomes a candidate for long-term memory.
+Because every event carries the same `goal("book_movie", ...)`, Minns Memory Layer groups them into an **episode**. When `goalProgress` hits `1.0`, the episode completes and becomes a candidate for long-term memory.
 
 The next time a similar context appears (same goal, same user), `getContextMemories()` returns the past episode. The agent can say: *"Last time you booked Interstellar row H — would you like the same?"*
 
 ### Strategy extraction
 
-After several successful booking episodes, EventGraphDB detects a pattern:
+After several successful booking episodes, Minns Memory Layer detects a pattern:
 
 > **Strategy: "standard_booking"**
 > 1. Greet user, ask for movie
@@ -712,7 +712,7 @@ function trimHistory(
 }
 ```
 
-The beauty of EventGraphDB is that trimmed messages aren't lost — they're already stored as events. Claims extracted from early turns persist in semantic memory even after the conversation window moves forward.
+The beauty of Minns Memory Layer is that trimmed messages aren't lost — they're already stored as events. Claims extracted from early turns persist in semantic memory even after the conversation window moves forward.
 
 ### Error handling in the intent parser
 
@@ -762,13 +762,13 @@ const context = bookingStrategies
 | :--- | :--- | :--- |
 | **Intent spec** | Defines what the agent can do | `buildSidecarInstruction(spec)` |
 | **Sidecar parser** | Extracts structured intents from LLM output | `extractIntentAndResponse()` |
-| **Event builder** | Logs every turn to EventGraphDB | `client.event().action().outcome().send()` |
+| **Event builder** | Logs every turn to Minns Memory Layer | `client.event().action().outcome().send()` |
 | **Claims** | Soft facts extracted from conversations | `client.searchClaims()` |
 | **Context memory** | Past episodes matching the current situation | `client.getContextMemories()` |
 | **Strategies** | Learned behavioral patterns | `client.getSimilarStrategies()` |
 | **Policy Guide** | What should the agent do next? | `client.getActionSuggestions()` |
 
-The intent model gives your agent a clean separation between *thinking* (LLM) and *doing* (tools). EventGraphDB gives it the ability to *remember* and *improve*. Together, they turn a stateless chatbot into an agent that gets better with every conversation.
+The intent model gives your agent a clean separation between *thinking* (LLM) and *doing* (tools). Minns Memory Layer gives it the ability to *remember* and *improve*. Together, they turn a stateless chatbot into an agent that gets better with every conversation.
 
 <CardGroup cols={2}>
   <Card title="Quickstart" icon="rocket" href="/quickstart">

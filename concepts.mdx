@@ -1,13 +1,13 @@
 ---
 title: "Core concepts"
-description: "Understand the building blocks of EventGraphDB — Events, Episodes, Goals, Memory, Claims, and Strategies."
+description: "Understand the building blocks of Minns Memory Layer — Events, Episodes, Goals, Memory, Claims, and Strategies."
 ---
 
-EventGraphDB models the full lifecycle of an agentic interaction. Here are the six core primitives you need to know.
+Minns Memory Layer models the full lifecycle of an agentic interaction. Here are the six core primitives you need to know.
 
 ## Events
 
-An **Event** is an atomic interaction — a user message, an AI action, a sensor reading, or a reasoning step. Every piece of data enters EventGraphDB as an event.
+An **Event** is an atomic interaction — a user message, an AI action, a sensor reading, or a reasoning step. Every piece of data enters Minns Memory Layer as an event.
 
 Events carry rich context including:
 - **Who** — the agent and session that produced the event
@@ -25,7 +25,7 @@ await client.event("movie-bot", { agentId: 1, sessionId: 5001 })
 
 ## Episodes
 
-An **Episode** is a sequence of events forming a coherent task. EventGraphDB automatically groups events that share the same active goal into episodes.
+An **Episode** is a sequence of events forming a coherent task. Minns Memory Layer automatically groups events that share the same active goal into episodes.
 
 When a goal's `progress` field reaches `1.0`, the episode is marked as complete and becomes a candidate for long-term memory.
 
@@ -35,7 +35,7 @@ When a goal's `progress` field reaches `1.0`, the episode is marked as complete 
 
 ## Goals
 
-A **Goal** is the objective driving an episode. Goals are embedded in every event's `context.active_goals` array, which lets EventGraphDB understand that a `Communication` event and an `Action` event belong to the same task.
+A **Goal** is the objective driving an episode. Goals are embedded in every event's `context.active_goals` array, which lets Minns Memory Layer understand that a `Communication` event and an `Action` event belong to the same task.
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
@@ -48,7 +48,7 @@ A **Goal** is the objective driving an episode. Goals are embedded in every even
 
 ## Memory
 
-A **Memory** is the long-term record of a significant episode. Once an episode completes, EventGraphDB consolidates it into a memory that can be recalled later by matching the current context against past contexts.
+A **Memory** is the long-term record of a significant episode. Once an episode completes, Minns Memory Layer consolidates it into a memory that can be recalled later by matching the current context against past contexts.
 
 Memories are typed:
 - **Episodic** — a full episode record
@@ -68,7 +68,7 @@ Claims are extracted automatically when you set `enable_semantic: true` on event
 
 ## Strategies
 
-A **Strategy** is a learned behavioral pattern extracted from successful episodes. If an agent repeatedly follows the same sequence of actions to achieve a goal, EventGraphDB distills that pattern into a reusable strategy.
+A **Strategy** is a learned behavioral pattern extracted from successful episodes. If an agent repeatedly follows the same sequence of actions to achieve a goal, Minns Memory Layer distills that pattern into a reusable strategy.
 
 Strategies include:
 - **Reasoning steps** — the ordered sequence of decisions

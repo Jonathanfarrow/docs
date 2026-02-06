@@ -1,0 +1,1684 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Minns Memory Layer API",
+    "description": "The Minns Memory Layer API provides a complete event graph service for autonomous agents and LLM-powered applications. It supports event ingestion, episodic memory, semantic claims, learned strategies, graph analytics, and policy-guided action suggestions.",
+    "version": "1.3.0",
+    "contact": {
+      "name": "Minns Support"
+    },
+    "license": {
+      "name": "MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://your-instance.minns.ai",
+      "description": "Your Minns Memory Layer instance"
+    }
+  ],
+  "tags": [
+    { "name": "Events", "description": "Ingest events and retrieve episodes" },
+    { "name": "Memory", "description": "Agent memories and context-based recall" },
+    { "name": "Strategies", "description": "Learned strategies and policy-guided suggestions" },
+    { "name": "Claims", "description": "Semantic memory — extracted facts and vector search" },
+    { "name": "Graph", "description": "Graph structure, analytics, communities, and centrality" },
+    { "name": "System", "description": "Health checks and system statistics" }
+  ],
+  "paths": {
+    "/api/events": {
+      "post": {
+        "operationId": "processEvent",
+        "summary": "Process event",
+        "description": "Ingests a new event and triggers automatic graph construction, episode detection, and claim extraction.",
+        "tags": ["Events"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ProcessEventRequest" },
+              "examples": {
+                "minimal": {
+                  "summary": "Minimal — server generates ID and timestamp",
+                  "value": {
+                    "event": {
+                      "agent_id": 1,
+                      "agent_type": "movie-bot",
+                      "session_id": 5001,
+                      "event_type": {
+                        "Communication": {
+                          "message_type": "user_message",
+                          "sender": 0,
+                          "recipient": 1,
+                          "content": { "text": "I want to book Interstellar for tonight." }
+                        }
+                      },
+                      "context": {
+                        "active_goals": [
+                          {
+                            "id": 101,
+                            "description": "book_movie",
+                            "priority": 0.9,
+                            "progress": 0.1,
+                            "subgoals": []
+                          }
+                        ],
+                        "environment": {
+                          "variables": { "user_id": "user_99" },
+                          "temporal": { "deadlines": [], "patterns": [] }
+                        },
+                        "resources": {
+                          "computational": {
+                            "cpu_percent": 10.0,
+                            "memory_bytes": 1024,
+                            "storage_bytes": 1024,
+                            "network_bandwidth": 100
+                          },
+                          "external": {}
+                        }
+                      },
+                      "metadata": { "user_id": { "String": "user_99" } }
+                    },
+                    "enable_semantic": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Event processed successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProcessEventResponse" },
+                "example": {
+                  "success": true,
+                  "nodes_created": 5,
+                  "patterns_detected": 2,
+                  "processing_time_ms": 15
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "getEvents",
+        "summary": "Get recent events",
+        "description": "Retrieves the most recent events ingested into the system.",
+        "tags": ["Events"],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of events to return.",
+            "required": false,
+            "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 1000 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of recent events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Event" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/episodes": {
+      "get": {
+        "operationId": "getEpisodes",
+        "summary": "Get episodes",
+        "description": "Retrieves completed episodes detected by the system. An episode is a sequence of events forming a coherent task.",
+        "tags": ["Events"],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of episodes to return.",
+            "required": false,
+            "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 1000 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of episodes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/EpisodeResponse" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/memories/agent/{agent_id}": {
+      "get": {
+        "operationId": "getAgentMemories",
+        "summary": "Get agent memories",
+        "description": "Retrieves long-term memories for a specific agent. Memories are formed from significant episodes and scored by strength and relevance.",
+        "tags": ["Memory"],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "description": "Agent identifier.",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of memories to return.",
+            "required": false,
+            "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 1000 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of memory objects",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/MemoryResponse" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/memories/context": {
+      "post": {
+        "operationId": "getContextMemories",
+        "summary": "Context memory search",
+        "description": "Finds episodic memories relevant to the current task by matching the provided context (goals + environment). Uses a context fingerprint for efficient retrieval of near-identical situations.",
+        "tags": ["Memory"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ContextMemoriesRequest" },
+              "example": {
+                "context": {
+                  "active_goals": [
+                    {
+                      "id": 101,
+                      "description": "book_movie",
+                      "priority": 0.9,
+                      "progress": 0.5,
+                      "deadline": null,
+                      "subgoals": []
+                    }
+                  ],
+                  "environment": {
+                    "variables": { "user_id": "user_99" },
+                    "spatial": null,
+                    "temporal": { "time_of_day": null, "deadlines": [], "patterns": [] }
+                  },
+                  "resources": {
+                    "computational": {
+                      "cpu_percent": 50.0,
+                      "memory_bytes": 1024000,
+                      "storage_bytes": 1024000000,
+                      "network_bandwidth": 1000
+                    },
+                    "external": {}
+                  },
+                  "fingerprint": 0,
+                  "embeddings": null
+                },
+                "limit": 5,
+                "min_similarity": 0.8,
+                "agent_id": null,
+                "session_id": null
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Array of matching memories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/MemoryResponse" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/strategies/agent/{agent_id}": {
+      "get": {
+        "operationId": "getAgentStrategies",
+        "summary": "Get agent strategies",
+        "description": "Retrieves learned behavioral strategies for a specific agent. Strategies are patterns extracted from successful episodes.",
+        "tags": ["Strategies"],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "description": "Agent identifier.",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of strategies to return.",
+            "required": false,
+            "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 1000 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of strategy objects",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/StrategyResponse" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/strategies/similar": {
+      "post": {
+        "operationId": "getSimilarStrategies",
+        "summary": "Find similar strategies",
+        "description": "Finds strategies similar to a given set of goals or tools. Use this to share learned behaviors across agents.",
+        "tags": ["Strategies"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/StrategySimilarityRequest" },
+              "example": {
+                "goal_ids": [101],
+                "tool_names": ["search_api"],
+                "result_types": [],
+                "context_hash": null,
+                "agent_id": null,
+                "limit": 5,
+                "min_score": 0.7
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Array of similar strategies with scores",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/SimilarStrategyResponse" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/suggestions": {
+      "get": {
+        "operationId": "getActionSuggestions",
+        "summary": "Get action suggestions",
+        "description": "The Policy Guide endpoint. Returns recommended next actions based on the current context, using learned strategies and graph patterns to predict the best course of action.",
+        "tags": ["Strategies"],
+        "parameters": [
+          {
+            "name": "context_hash",
+            "in": "query",
+            "description": "Context fingerprint hash.",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "last_action_node",
+            "in": "query",
+            "description": "Node ID of the last action taken.",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64", "nullable": true }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of suggestions to return.",
+            "required": false,
+            "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 1000 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of action suggestions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/ActionSuggestionResponse" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/claims": {
+      "get": {
+        "operationId": "listClaims",
+        "summary": "List claims",
+        "description": "List all extracted facts (claims). Claims are atomic pieces of knowledge automatically extracted from events when semantic processing is enabled.",
+        "tags": ["Claims"],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of claims to return.",
+            "required": false,
+            "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 1000 }
+          },
+          {
+            "name": "event_id",
+            "in": "query",
+            "description": "Filter claims by source event ID.",
+            "required": false,
+            "schema": { "type": "integer", "format": "int128", "nullable": true }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of claims",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/ClaimResponse" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/claims/{id}": {
+      "get": {
+        "operationId": "getClaim",
+        "summary": "Get claim by ID",
+        "description": "Retrieve a specific claim by its unique identifier.",
+        "tags": ["Claims"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Claim identifier.",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Single claim object",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ClaimResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Claim not found"
+          }
+        }
+      }
+    },
+    "/api/claims/search": {
+      "post": {
+        "operationId": "searchClaims",
+        "summary": "Search claims",
+        "description": "Semantic vector search over extracted claims. Use natural language queries to find soft facts like user preferences, past complaints, or behavioral patterns.",
+        "tags": ["Claims"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ClaimSearchRequest" },
+              "example": {
+                "query_text": "What are the user's favorite genres?",
+                "top_k": 3,
+                "min_similarity": 0.7
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Array of claims with similarity scores",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/ClaimResponse" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/embeddings/process": {
+      "post": {
+        "operationId": "processEmbeddings",
+        "summary": "Process embeddings",
+        "description": "Manually trigger embedding generation for pending claims. Useful when you need embeddings available immediately after ingestion.",
+        "tags": ["Claims"],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Batch size for processing.",
+            "required": false,
+            "schema": { "type": "integer", "default": 10, "minimum": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Embedding processing result",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/EmbeddingProcessResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/graph": {
+      "get": {
+        "operationId": "getGraph",
+        "summary": "Get graph",
+        "description": "Retrieve the graph structure including nodes and edges. Optionally filter by session or agent type.",
+        "tags": ["Graph"],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of nodes/edges to return.",
+            "required": false,
+            "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 1000 }
+          },
+          {
+            "name": "session_id",
+            "in": "query",
+            "description": "Filter by session ID.",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64", "nullable": true }
+          },
+          {
+            "name": "agent_type",
+            "in": "query",
+            "description": "Filter by agent type.",
+            "required": false,
+            "schema": { "type": "string", "nullable": true }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Graph structure with nodes and edges",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/GraphResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/graph/context": {
+      "get": {
+        "operationId": "getGraphByContext",
+        "summary": "Get context graph",
+        "description": "Retrieve a subgraph centered around a specific context fingerprint. Returns nodes and edges related to that context.",
+        "tags": ["Graph"],
+        "parameters": [
+          {
+            "name": "context_hash",
+            "in": "query",
+            "description": "Context fingerprint hash.",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of nodes/edges to return.",
+            "required": false,
+            "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 1000 }
+          },
+          {
+            "name": "session_id",
+            "in": "query",
+            "description": "Filter by session ID.",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64", "nullable": true }
+          },
+          {
+            "name": "agent_type",
+            "in": "query",
+            "description": "Filter by agent type.",
+            "required": false,
+            "schema": { "type": "string", "nullable": true }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Context-anchored subgraph",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/GraphResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats": {
+      "get": {
+        "operationId": "getStats",
+        "summary": "Get system statistics",
+        "description": "High-level system statistics including total events processed, nodes created, episodes detected, and average processing time.",
+        "tags": ["System"],
+        "responses": {
+          "200": {
+            "description": "System statistics",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StatsResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/analytics": {
+      "get": {
+        "operationId": "getAnalytics",
+        "summary": "Get graph analytics",
+        "description": "Advanced graph analytics including connected components, modularity, clustering coefficients, and learning metrics.",
+        "tags": ["Graph"],
+        "responses": {
+          "200": {
+            "description": "Graph analytics",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AnalyticsResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/indexes": {
+      "get": {
+        "operationId": "getIndexes",
+        "summary": "Get index statistics",
+        "description": "Statistics on property indexes including cache hits, misses, and query counts.",
+        "tags": ["Graph"],
+        "responses": {
+          "200": {
+            "description": "Map of index name to index statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": { "$ref": "#/components/schemas/IndexStatsResponse" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/communities": {
+      "get": {
+        "operationId": "getCommunities",
+        "summary": "Get communities",
+        "description": "Returns detected communities using the Louvain algorithm. Only available on the NORMAL profile.",
+        "tags": ["Graph"],
+        "responses": {
+          "200": {
+            "description": "Detected communities",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CommunitiesResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/centrality": {
+      "get": {
+        "operationId": "getCentrality",
+        "summary": "Get centrality scores",
+        "description": "Returns node centrality scores (degree, betweenness, closeness, eigenvector, PageRank) for importance ranking.",
+        "tags": ["Graph"],
+        "responses": {
+          "200": {
+            "description": "Array of centrality scores per node",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/CentralityScoresResponse" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "getHealth",
+        "summary": "Health check",
+        "description": "Check server status and engine health metrics including uptime, node/edge counts, and processing rate.",
+        "tags": ["System"],
+        "responses": {
+          "200": {
+            "description": "Health status",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" },
+                "example": {
+                  "status": "healthy",
+                  "version": "1.3.0",
+                  "uptime_seconds": 3600,
+                  "is_healthy": true,
+                  "node_count": 15420,
+                  "edge_count": 32801,
+                  "processing_rate": 125.5
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Event": {
+        "type": "object",
+        "description": "The core data structure representing an atomic interaction in the system.",
+        "required": ["agent_id", "agent_type", "session_id", "event_type", "context"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Unique event identifier (u128). Server auto-generates if omitted."
+          },
+          "timestamp": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Nanoseconds since Unix epoch. Server auto-generates if omitted.",
+            "example": 1738425600000000000
+          },
+          "agent_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Agent that generated this event.",
+            "example": 1
+          },
+          "agent_type": {
+            "type": "string",
+            "description": "Agent classification.",
+            "example": "movie-bot"
+          },
+          "session_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Session identifier for event grouping.",
+            "example": 5001
+          },
+          "event_type": {
+            "$ref": "#/components/schemas/EventType"
+          },
+          "causality_chain": {
+            "type": "array",
+            "items": { "type": "integer" },
+            "default": [],
+            "description": "Parent event IDs in the causality chain."
+          },
+          "context": {
+            "$ref": "#/components/schemas/EventContext"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": { "$ref": "#/components/schemas/MetadataValue" },
+            "default": {},
+            "description": "Additional key-value metadata."
+          },
+          "context_size_bytes": {
+            "type": "integer",
+            "default": 0,
+            "description": "Size of context in bytes."
+          },
+          "segment_pointer": {
+            "type": ["string", "null"],
+            "default": null,
+            "description": "Pointer to segment storage for large contexts. Format: `segment://{bucket}/{key}`."
+          }
+        }
+      },
+      "EventType": {
+        "description": "Discriminated union — exactly one variant must be provided.",
+        "oneOf": [
+          {
+            "type": "object",
+            "title": "Action",
+            "required": ["Action"],
+            "properties": {
+              "Action": {
+                "type": "object",
+                "required": ["action_name", "parameters", "outcome", "duration_ns"],
+                "properties": {
+                  "action_name": {
+                    "type": "string",
+                    "description": "Name of the action executed.",
+                    "example": "book_movie_ticket"
+                  },
+                  "parameters": {
+                    "description": "Action parameters (any JSON value, can be null)."
+                  },
+                  "outcome": { "$ref": "#/components/schemas/ActionOutcome" },
+                  "duration_ns": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "Execution duration in nanoseconds.",
+                    "example": 1500000
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "title": "Observation",
+            "required": ["Observation"],
+            "properties": {
+              "Observation": {
+                "type": "object",
+                "required": ["observation_type", "data", "confidence", "source"],
+                "properties": {
+                  "observation_type": {
+                    "type": "string",
+                    "description": "Type of observation.",
+                    "example": "ticket_availability"
+                  },
+                  "data": {
+                    "description": "Observed data (any JSON value)."
+                  },
+                  "confidence": {
+                    "type": "number",
+                    "format": "float",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "description": "Confidence in the observation."
+                  },
+                  "source": {
+                    "type": "string",
+                    "description": "Data source identifier.",
+                    "example": "Theater-API"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "title": "Cognitive",
+            "required": ["Cognitive"],
+            "properties": {
+              "Cognitive": {
+                "type": "object",
+                "required": ["process_type", "input", "output", "reasoning_trace"],
+                "properties": {
+                  "process_type": {
+                    "type": "string",
+                    "enum": ["GoalFormation", "Planning", "Reasoning", "MemoryRetrieval", "LearningUpdate"],
+                    "description": "Type of cognitive process."
+                  },
+                  "input": {
+                    "description": "Input to the cognitive process (any JSON)."
+                  },
+                  "output": {
+                    "description": "Output from the cognitive process (any JSON)."
+                  },
+                  "reasoning_trace": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Step-by-step reasoning trace."
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "title": "Communication",
+            "required": ["Communication"],
+            "properties": {
+              "Communication": {
+                "type": "object",
+                "required": ["message_type", "sender", "recipient", "content"],
+                "properties": {
+                  "message_type": {
+                    "type": "string",
+                    "description": "Type of message.",
+                    "example": "user_message"
+                  },
+                  "sender": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "Sender agent ID."
+                  },
+                  "recipient": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "Recipient agent ID."
+                  },
+                  "content": {
+                    "description": "Message content (any JSON value)."
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "title": "Learning",
+            "required": ["Learning"],
+            "properties": {
+              "Learning": {
+                "type": "object",
+                "required": ["event"],
+                "properties": {
+                  "event": { "$ref": "#/components/schemas/LearningEvent" }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "title": "Context",
+            "required": ["Context"],
+            "properties": {
+              "Context": {
+                "type": "object",
+                "required": ["text", "context_type"],
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "description": "Raw text content for claim extraction."
+                  },
+                  "context_type": {
+                    "type": "string",
+                    "description": "Type of context: conversation, document, or transcript.",
+                    "example": "conversation"
+                  },
+                  "language": {
+                    "type": ["string", "null"],
+                    "description": "Language hint (e.g., \"en\", \"es\").",
+                    "example": "en"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ActionOutcome": {
+        "description": "Result of an action — exactly one variant.",
+        "oneOf": [
+          {
+            "type": "object",
+            "title": "Success",
+            "required": ["Success"],
+            "properties": {
+              "Success": {
+                "type": "object",
+                "required": ["result"],
+                "properties": {
+                  "result": { "description": "Result data (any JSON)." }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "title": "Failure",
+            "required": ["Failure"],
+            "properties": {
+              "Failure": {
+                "type": "object",
+                "required": ["error", "error_code"],
+                "properties": {
+                  "error": { "type": "string", "description": "Error message." },
+                  "error_code": { "type": "integer", "format": "int32", "description": "Numeric error code." }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "title": "Partial",
+            "required": ["Partial"],
+            "properties": {
+              "Partial": {
+                "type": "object",
+                "required": ["result", "issues"],
+                "properties": {
+                  "result": { "description": "Partial result data (any JSON)." },
+                  "issues": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "List of issues encountered."
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "LearningEvent": {
+        "description": "A learning feedback event — exactly one variant.",
+        "oneOf": [
+          {
+            "type": "object",
+            "title": "MemoryRetrieved",
+            "required": ["MemoryRetrieved"],
+            "properties": {
+              "MemoryRetrieved": {
+                "type": "object",
+                "required": ["query_id", "memory_ids"],
+                "properties": {
+                  "query_id": { "type": "string" },
+                  "memory_ids": { "type": "array", "items": { "type": "integer", "format": "int64" } }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "title": "MemoryUsed",
+            "required": ["MemoryUsed"],
+            "properties": {
+              "MemoryUsed": {
+                "type": "object",
+                "required": ["query_id", "memory_id"],
+                "properties": {
+                  "query_id": { "type": "string" },
+                  "memory_id": { "type": "integer", "format": "int64" }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "title": "StrategyServed",
+            "required": ["StrategyServed"],
+            "properties": {
+              "StrategyServed": {
+                "type": "object",
+                "required": ["query_id", "strategy_ids"],
+                "properties": {
+                  "query_id": { "type": "string" },
+                  "strategy_ids": { "type": "array", "items": { "type": "integer", "format": "int64" } }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "title": "StrategyUsed",
+            "required": ["StrategyUsed"],
+            "properties": {
+              "StrategyUsed": {
+                "type": "object",
+                "required": ["query_id", "strategy_id"],
+                "properties": {
+                  "query_id": { "type": "string" },
+                  "strategy_id": { "type": "integer", "format": "int64" }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "title": "Outcome",
+            "required": ["Outcome"],
+            "properties": {
+              "Outcome": {
+                "type": "object",
+                "required": ["query_id", "success"],
+                "properties": {
+                  "query_id": { "type": "string" },
+                  "success": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "EventContext": {
+        "type": "object",
+        "description": "Environmental context attached to every event.",
+        "required": ["environment", "active_goals", "resources"],
+        "properties": {
+          "environment": { "$ref": "#/components/schemas/EnvironmentState" },
+          "active_goals": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Goal" },
+            "description": "Currently active goals (can be empty)."
+          },
+          "resources": { "$ref": "#/components/schemas/ResourceState" },
+          "fingerprint": {
+            "type": "integer",
+            "format": "int64",
+            "default": 0,
+            "description": "Context fingerprint hash. Server auto-computes if `0` or omitted."
+          },
+          "embeddings": {
+            "type": ["array", "null"],
+            "items": { "type": "number", "format": "float" },
+            "default": null,
+            "description": "Optional vector embeddings for the context."
+          }
+        }
+      },
+      "EnvironmentState": {
+        "type": "object",
+        "required": ["variables", "temporal"],
+        "properties": {
+          "variables": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Key-value environment variables."
+          },
+          "spatial": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/SpatialContext" },
+              { "type": "null" }
+            ],
+            "description": "Optional spatial information."
+          },
+          "temporal": { "$ref": "#/components/schemas/TemporalContext" }
+        }
+      },
+      "SpatialContext": {
+        "type": "object",
+        "required": ["location", "reference_frame"],
+        "properties": {
+          "location": {
+            "type": "array",
+            "items": { "type": "number", "format": "double" },
+            "minItems": 3,
+            "maxItems": 3,
+            "description": "[x, y, z] coordinates."
+          },
+          "bounds": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/BoundingBox" },
+              { "type": "null" }
+            ]
+          },
+          "reference_frame": {
+            "type": "string",
+            "description": "Coordinate reference frame.",
+            "example": "world"
+          }
+        }
+      },
+      "BoundingBox": {
+        "type": "object",
+        "required": ["min", "max"],
+        "properties": {
+          "min": {
+            "type": "array",
+            "items": { "type": "number", "format": "double" },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "max": {
+            "type": "array",
+            "items": { "type": "number", "format": "double" },
+            "minItems": 3,
+            "maxItems": 3
+          }
+        }
+      },
+      "TemporalContext": {
+        "type": "object",
+        "required": ["deadlines", "patterns"],
+        "properties": {
+          "time_of_day": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/TimeOfDay" },
+              { "type": "null" }
+            ]
+          },
+          "deadlines": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Deadline" }
+          },
+          "patterns": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/TemporalPattern" }
+          }
+        }
+      },
+      "TimeOfDay": {
+        "type": "object",
+        "required": ["hour", "minute", "timezone"],
+        "properties": {
+          "hour": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 23
+          },
+          "minute": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 59
+          },
+          "timezone": {
+            "type": "string",
+            "example": "UTC"
+          }
+        }
+      },
+      "Deadline": {
+        "type": "object",
+        "required": ["goal_id", "timestamp", "priority"],
+        "properties": {
+          "goal_id": { "type": "integer", "format": "int64" },
+          "timestamp": { "type": "integer", "format": "int64" },
+          "priority": { "type": "number", "format": "float", "minimum": 0.0, "maximum": 1.0 }
+        }
+      },
+      "TemporalPattern": {
+        "type": "object",
+        "required": ["pattern_name", "frequency", "phase"],
+        "properties": {
+          "pattern_name": { "type": "string" },
+          "frequency": { "type": "integer", "format": "int64", "description": "Frequency in nanoseconds." },
+          "phase": { "type": "number", "format": "float" }
+        }
+      },
+      "Goal": {
+        "type": "object",
+        "description": "An active goal attached to an event context.",
+        "required": ["id", "description", "priority", "progress", "subgoals"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Goal identifier.",
+            "example": 101
+          },
+          "description": {
+            "type": "string",
+            "description": "Goal description.",
+            "example": "book_movie"
+          },
+          "priority": {
+            "type": "number",
+            "format": "float",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "Priority level.",
+            "example": 0.9
+          },
+          "deadline": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "Optional deadline (nanosecond timestamp)."
+          },
+          "progress": {
+            "type": "number",
+            "format": "float",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "Completion progress. 1.0 marks the episode as complete.",
+            "example": 0.5
+          },
+          "subgoals": {
+            "type": "array",
+            "items": { "type": "integer", "format": "int64" },
+            "description": "Subgoal IDs."
+          }
+        }
+      },
+      "ResourceState": {
+        "type": "object",
+        "required": ["computational", "external"],
+        "properties": {
+          "computational": { "$ref": "#/components/schemas/ComputationalResources" },
+          "external": {
+            "type": "object",
+            "additionalProperties": { "$ref": "#/components/schemas/ResourceAvailability" },
+            "description": "External resource availability."
+          }
+        }
+      },
+      "ComputationalResources": {
+        "type": "object",
+        "required": ["cpu_percent", "memory_bytes", "storage_bytes", "network_bandwidth"],
+        "properties": {
+          "cpu_percent": {
+            "type": "number",
+            "format": "float",
+            "minimum": 0.0,
+            "maximum": 100.0,
+            "example": 10.0
+          },
+          "memory_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1024
+          },
+          "storage_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1024
+          },
+          "network_bandwidth": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Bytes per second.",
+            "example": 100
+          }
+        }
+      },
+      "ResourceAvailability": {
+        "type": "object",
+        "required": ["available", "capacity", "current_usage"],
+        "properties": {
+          "available": { "type": "boolean" },
+          "capacity": { "type": "number", "format": "float", "minimum": 0.0, "maximum": 1.0 },
+          "current_usage": { "type": "number", "format": "float", "minimum": 0.0, "maximum": 1.0 },
+          "estimated_cost": { "type": ["number", "null"], "format": "float" }
+        }
+      },
+      "MetadataValue": {
+        "description": "A typed metadata value. Exactly one variant.",
+        "oneOf": [
+          {
+            "type": "object",
+            "title": "String",
+            "required": ["String"],
+            "properties": { "String": { "type": "string" } }
+          },
+          {
+            "type": "object",
+            "title": "Integer",
+            "required": ["Integer"],
+            "properties": { "Integer": { "type": "integer" } }
+          },
+          {
+            "type": "object",
+            "title": "Float",
+            "required": ["Float"],
+            "properties": { "Float": { "type": "number" } }
+          },
+          {
+            "type": "object",
+            "title": "Boolean",
+            "required": ["Boolean"],
+            "properties": { "Boolean": { "type": "boolean" } }
+          },
+          {
+            "type": "object",
+            "title": "Json",
+            "required": ["Json"],
+            "properties": { "Json": { "description": "Any JSON value." } }
+          }
+        ]
+      },
+      "ProcessEventRequest": {
+        "type": "object",
+        "required": ["event"],
+        "properties": {
+          "event": { "$ref": "#/components/schemas/Event" },
+          "enable_semantic": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable semantic processing (NER, claims, embeddings)."
+          }
+        }
+      },
+      "ProcessEventResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "description": "Whether processing succeeded." },
+          "nodes_created": { "type": "integer", "description": "Number of graph nodes created." },
+          "patterns_detected": { "type": "integer", "description": "Number of patterns detected." },
+          "processing_time_ms": { "type": "integer", "format": "int64", "description": "Processing time in milliseconds." }
+        }
+      },
+      "EpisodeResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64", "description": "Episode identifier." },
+          "agent_id": { "type": "integer", "format": "int64", "description": "Agent that executed the episode." },
+          "event_count": { "type": "integer", "description": "Number of events in episode." },
+          "significance": { "type": "number", "format": "float", "minimum": 0.0, "maximum": 1.0, "description": "Significance score." },
+          "outcome": { "type": ["string", "null"], "description": "Episode outcome (e.g., \"Success\", \"Failure\")." }
+        }
+      },
+      "MemoryResponse": {
+        "type": "object",
+        "description": "A long-term memory formed from a significant episode.",
+        "properties": {
+          "id": { "type": "integer", "format": "int64", "description": "Memory identifier." },
+          "agent_id": { "type": "integer", "format": "int64", "description": "Agent that formed the memory." },
+          "session_id": { "type": "integer", "format": "int64", "description": "Session identifier." },
+          "strength": { "type": "number", "format": "float", "minimum": 0.0, "maximum": 1.0, "description": "Memory strength." },
+          "relevance_score": { "type": "number", "format": "float", "minimum": 0.0, "maximum": 1.0, "description": "Relevance score." },
+          "access_count": { "type": "integer", "format": "int32", "description": "Number of times accessed." },
+          "formed_at": { "type": "integer", "format": "int64", "description": "Formation timestamp (nanoseconds)." },
+          "last_accessed": { "type": "integer", "format": "int64", "description": "Last access timestamp (nanoseconds)." },
+          "context_hash": { "type": "integer", "format": "int64", "description": "Context fingerprint." },
+          "context": { "$ref": "#/components/schemas/EventContext" },
+          "outcome": { "type": "string", "description": "Episode outcome description." },
+          "memory_type": {
+            "type": "string",
+            "enum": ["Episodic", "Working", "Semantic", "Negative"],
+            "description": "Memory classification."
+          }
+        }
+      },
+      "ContextMemoriesRequest": {
+        "type": "object",
+        "required": ["context"],
+        "properties": {
+          "context": { "$ref": "#/components/schemas/EventContext" },
+          "limit": { "type": "integer", "default": 10, "minimum": 1, "maximum": 1000 },
+          "min_similarity": { "type": ["number", "null"], "format": "float", "default": 0.6, "minimum": 0.0, "maximum": 1.0, "description": "Minimum similarity threshold." },
+          "agent_id": { "type": ["integer", "null"], "format": "int64", "description": "Filter by agent." },
+          "session_id": { "type": ["integer", "null"], "format": "int64", "description": "Filter by session." }
+        }
+      },
+      "StrategyResponse": {
+        "type": "object",
+        "description": "A learned behavioral strategy extracted from successful episodes.",
+        "properties": {
+          "id": { "type": "integer", "format": "int64", "description": "Strategy identifier." },
+          "name": { "type": "string", "description": "Strategy name." },
+          "agent_id": { "type": "integer", "format": "int64", "description": "Agent that learned this strategy." },
+          "quality_score": { "type": "number", "format": "float", "minimum": 0.0, "maximum": 1.0, "description": "Quality score." },
+          "success_count": { "type": "integer", "format": "int32", "description": "Number of successes." },
+          "failure_count": { "type": "integer", "format": "int32", "description": "Number of failures." },
+          "reasoning_steps": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ReasoningStepResponse" },
+            "description": "Steps in strategy."
+          },
+          "strategy_type": { "type": "string", "description": "Strategy classification." },
+          "support_count": { "type": "integer", "format": "int32", "description": "Number of supporting episodes." },
+          "expected_success": { "type": "number", "format": "float", "minimum": 0.0, "maximum": 1.0, "description": "Expected success rate." },
+          "expected_cost": { "type": "number", "format": "float", "description": "Expected cost." },
+          "expected_value": { "type": "number", "format": "float", "description": "Expected value." },
+          "confidence": { "type": "number", "format": "float", "minimum": 0.0, "maximum": 1.0, "description": "Confidence in strategy." },
+          "goal_bucket_id": { "type": "integer", "format": "int64", "description": "Associated goal bucket." },
+          "behavior_signature": { "type": "string", "description": "Unique behavior signature." },
+          "precondition": { "type": "string", "description": "When to apply this strategy." },
+          "action_hint": { "type": "string", "description": "Suggested action." }
+        }
+      },
+      "ReasoningStepResponse": {
+        "type": "object",
+        "properties": {
+          "description": { "type": "string", "description": "Step description." },
+          "sequence_order": { "type": "integer", "description": "Order in sequence." }
+        }
+      },
+      "StrategySimilarityRequest": {
+        "type": "object",
+        "properties": {
+          "goal_ids": { "type": "array", "items": { "type": "integer", "format": "int64" }, "default": [], "description": "Goal IDs to match." },
+          "tool_names": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Tool names to match." },
+          "result_types": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Result types to match." },
+          "context_hash": { "type": ["integer", "null"], "format": "int64", "description": "Context fingerprint." },
+          "agent_id": { "type": ["integer", "null"], "format": "int64", "description": "Filter by agent." },
+          "limit": { "type": "integer", "default": 10, "minimum": 1, "maximum": 1000 },
+          "min_score": { "type": ["number", "null"], "format": "float", "description": "Minimum similarity score." }
+        }
+      },
+      "SimilarStrategyResponse": {
+        "allOf": [
+          { "$ref": "#/components/schemas/StrategyResponse" },
+          {
+            "type": "object",
+            "properties": {
+              "score": { "type": "number", "format": "float", "minimum": 0.0, "maximum": 1.0, "description": "Similarity score." }
+            }
+          }
+        ]
+      },
+      "ActionSuggestionResponse": {
+        "type": "object",
+        "description": "A policy-guided action suggestion.",
+        "properties": {
+          "action_name": { "type": "string", "description": "Suggested action name." },
+          "success_probability": { "type": "number", "format": "float", "minimum": 0.0, "maximum": 1.0, "description": "Probability of success." },
+          "evidence_count": { "type": "integer", "format": "int32", "description": "Number of supporting examples." },
+          "reasoning": { "type": "string", "description": "Explanation for suggestion." }
+        }
+      },
+      "ClaimResponse": {
+        "type": "object",
+        "description": "An extracted atomic fact (claim) from an event.",
+        "properties": {
+          "claim_id": { "type": "integer", "format": "int64", "description": "Claim identifier." },
+          "claim_text": { "type": "string", "description": "The extracted claim/fact.", "example": "User prefers Sci-Fi movies" },
+          "confidence": { "type": "number", "format": "float", "minimum": 0.0, "maximum": 1.0, "description": "Extraction confidence." },
+          "source_event_id": { "type": "integer", "description": "Source event ID (u128)." },
+          "similarity": { "type": ["number", "null"], "format": "float", "description": "Similarity score (only populated in search results)." },
+          "evidence_spans": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/EvidenceSpanResponse" },
+            "description": "Supporting evidence spans."
+          },
+          "support_count": { "type": "integer", "format": "int32", "description": "Number of supporting instances." },
+          "status": {
+            "type": "string",
+            "enum": ["Active", "Contradicted", "Deprecated"],
+            "description": "Claim status."
+          },
+          "created_at": { "type": "integer", "format": "int64", "description": "Creation timestamp (nanoseconds)." },
+          "last_accessed": { "type": "integer", "format": "int64", "description": "Last access timestamp (nanoseconds)." }
+        }
+      },
+      "EvidenceSpanResponse": {
+        "type": "object",
+        "properties": {
+          "start_offset": { "type": "integer", "description": "Start position in source text." },
+          "end_offset": { "type": "integer", "description": "End position in source text." },
+          "text_snippet": { "type": "string", "description": "Extracted text snippet." }
+        }
+      },
+      "ClaimSearchRequest": {
+        "type": "object",
+        "required": ["query_text"],
+        "properties": {
+          "query_text": { "type": "string", "description": "Natural language query.", "example": "What are the user's favorite genres?" },
+          "top_k": { "type": "integer", "default": 10, "minimum": 1, "description": "Number of results to return." },
+          "min_similarity": { "type": "number", "format": "float", "default": 0.7, "minimum": 0.0, "maximum": 1.0, "description": "Minimum similarity threshold." }
+        }
+      },
+      "EmbeddingProcessResponse": {
+        "type": "object",
+        "properties": {
+          "claims_processed": { "type": "integer", "description": "Number of claims processed." },
+          "success": { "type": "boolean", "description": "Whether processing succeeded." }
+        }
+      },
+      "GraphResponse": {
+        "type": "object",
+        "description": "Graph structure containing nodes and edges.",
+        "properties": {
+          "nodes": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/GraphNodeResponse" }
+          },
+          "edges": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/GraphEdgeResponse" }
+          }
+        }
+      },
+      "GraphNodeResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64", "description": "Node identifier." },
+          "label": { "type": "string", "description": "Node label." },
+          "node_type": {
+            "type": "string",
+            "description": "Node type: Event, Goal, Action, Context, etc."
+          },
+          "created_at": { "type": "integer", "format": "int64", "description": "Creation timestamp." },
+          "properties": { "type": "object", "description": "Node properties (any JSON)." }
+        }
+      },
+      "GraphEdgeResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64", "description": "Edge identifier." },
+          "from": { "type": "integer", "format": "int64", "description": "Source node ID." },
+          "to": { "type": "integer", "format": "int64", "description": "Target node ID." },
+          "edge_type": {
+            "type": "string",
+            "description": "Edge type: CausedBy, PartOf, LeadsTo, etc."
+          },
+          "weight": { "type": "number", "format": "float", "minimum": 0.0, "maximum": 1.0, "description": "Edge weight." },
+          "confidence": { "type": "number", "format": "float", "minimum": 0.0, "maximum": 1.0, "description": "Confidence in edge." }
+        }
+      },
+      "StatsResponse": {
+        "type": "object",
+        "properties": {
+          "total_events_processed": { "type": "integer", "format": "int64" },
+          "total_nodes_created": { "type": "integer", "format": "int64" },
+          "total_episodes_detected": { "type": "integer", "format": "int64" },
+          "total_memories_formed": { "type": "integer", "format": "int64" },
+          "total_strategies_extracted": { "type": "integer", "format": "int64" },
+          "total_reinforcements_applied": { "type": "integer", "format": "int64" },
+          "average_processing_time_ms": { "type": "number", "format": "double" }
+        }
+      },
+      "AnalyticsResponse": {
+        "type": "object",
+        "properties": {
+          "node_count": { "type": "integer" },
+          "edge_count": { "type": "integer" },
+          "connected_components": { "type": "integer" },
+          "largest_component_size": { "type": "integer" },
+          "average_path_length": { "type": "number", "format": "float" },
+          "diameter": { "type": "integer", "format": "int32" },
+          "clustering_coefficient": { "type": "number", "format": "float" },
+          "average_clustering": { "type": "number", "format": "float" },
+          "modularity": { "type": "number", "format": "float" },
+          "community_count": { "type": "integer" },
+          "learning_metrics": { "$ref": "#/components/schemas/LearningMetricsResponse" }
+        }
+      },
+      "LearningMetricsResponse": {
+        "type": "object",
+        "properties": {
+          "total_events": { "type": "integer" },
+          "unique_contexts": { "type": "integer" },
+          "learned_patterns": { "type": "integer" },
+          "strong_memories": { "type": "integer" },
+          "overall_success_rate": { "type": "number", "format": "float", "minimum": 0.0, "maximum": 1.0 },
+          "average_edge_weight": { "type": "number", "format": "float" }
+        }
+      },
+      "IndexStatsResponse": {
+        "type": "object",
+        "properties": {
+          "insert_count": { "type": "integer", "format": "int64" },
+          "query_count": { "type": "integer", "format": "int64" },
+          "range_query_count": { "type": "integer", "format": "int64" },
+          "hit_count": { "type": "integer", "format": "int64" },
+          "miss_count": { "type": "integer", "format": "int64" },
+          "last_accessed": { "type": "integer", "format": "int64" }
+        }
+      },
+      "CommunitiesResponse": {
+        "type": "object",
+        "properties": {
+          "communities": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CommunityResponse" }
+          },
+          "modularity": { "type": "number", "format": "float" },
+          "iterations": { "type": "integer" },
+          "community_count": { "type": "integer" }
+        }
+      },
+      "CommunityResponse": {
+        "type": "object",
+        "properties": {
+          "community_id": { "type": "integer", "format": "int64" },
+          "node_ids": { "type": "array", "items": { "type": "integer", "format": "int64" } },
+          "size": { "type": "integer" }
+        }
+      },
+      "CentralityScoresResponse": {
+        "type": "object",
+        "properties": {
+          "node_id": { "type": "integer", "format": "int64" },
+          "degree": { "type": "number", "format": "float" },
+          "betweenness": { "type": "number", "format": "float" },
+          "closeness": { "type": "number", "format": "float" },
+          "eigenvector": { "type": "number", "format": "float" },
+          "pagerank": { "type": "number", "format": "float" },
+          "combined": { "type": "number", "format": "float" }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["healthy", "degraded", "unhealthy"],
+            "description": "Server status."
+          },
+          "version": { "type": "string", "description": "Server version.", "example": "1.3.0" },
+          "uptime_seconds": { "type": "integer", "format": "int64", "description": "Server uptime in seconds." },
+          "is_healthy": { "type": "boolean", "description": "Overall health status." },
+          "node_count": { "type": "integer", "description": "Current graph node count." },
+          "edge_count": { "type": "integer", "description": "Current graph edge count." },
+          "processing_rate": { "type": "number", "format": "double", "description": "Events processed per second." }
+        }
+      }
+    }
+  }
+}
