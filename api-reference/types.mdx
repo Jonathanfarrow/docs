@@ -1,0 +1,185 @@
+---
+title: "Types & primitives"
+sidebarTitle: "Types"
+description: "Complete reference for all primitive types, the Event structure, EventContext, and MetadataValue used across the API."
+---
+
+## Primitive types
+
+All fields in the API use these core primitive types:
+
+| Type | Description | Format | Example |
+| :--- | :--- | :--- | :--- |
+| `EventId` | Unique event identifier | `u128` (UUID as 128-bit integer) | `123456789012345678901234567890` |
+| `Timestamp` | High-precision timestamp | `u64` (nanoseconds since Unix epoch) | `1738425600000000000` |
+| `AgentId` | Agent identifier | `u64` | `1` |
+| `AgentType` | Agent classification | `String` | `"movie-bot"` |
+| `SessionId` | Session identifier | `u64` | `5001` |
+| `GoalId` | Goal identifier | `u64` | `101` |
+| `ContextHash` | Context fingerprint | `u64` (computed hash) | `12345678901234` |
+| `NodeId` | Graph node identifier | `u64` | `42` |
+| `MemoryId` | Memory identifier | `u64` | `789` |
+
+<Info>
+  **Timestamps** are nanoseconds since Unix epoch. In JavaScript: `Date.now() * 1_000_000`.
+</Info>
+
+---
+
+## Event structure
+
+The `Event` object is the core data structure. Every interaction enters EventGraphDB as an event.
+
+```json
+{
+  "id": 123456789012345678901234567890,
+  "timestamp": 1738425600000000000,
+  "agent_id": 1,
+  "agent_type": "movie-bot",
+  "session_id": 5001,
+  "event_type": { "..." : "..." },
+  "causality_chain": [],
+  "context": { "..." : "..." },
+  "metadata": {},
+  "context_size_bytes": 0,
+  "segment_pointer": null
+}
+```
+
+| Field | Type | Required | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | `u128` | ⚙️ Auto | Auto-generated | Unique event identifier |
+| `timestamp` | `u64` | ⚙️ Auto | Auto-generated | Nanoseconds since Unix epoch |
+| `agent_id` | `u64` | ✅ Yes | — | Agent that generated this event |
+| `agent_type` | `String` | ✅ Yes | — | Agent classification |
+| `session_id` | `u64` | ✅ Yes | — | Session identifier |
+| `event_type` | `EventType` | ✅ Yes | — | Type and payload ([see event types](/api-reference/events/event-types)) |
+| `causality_chain` | `EventId[]` | No | `[]` | Parent event IDs |
+| `context` | `EventContext` | ✅ Yes | — | Environmental context (see below) |
+| `metadata` | `Map<String, MetadataValue>` | No | `{}` | Additional metadata |
+| `context_size_bytes` | `usize` | No | `0` | Size of context in bytes |
+| `segment_pointer` | `String \| null` | No | `null` | Pointer to segment storage |
+
+---
+
+## EventContext structure
+
+Every event carries a context object describing the environment at the time of the event.
+
+```json
+{
+  "environment": {
+    "variables": { "user_id": "user_99" },
+    "spatial": null,
+    "temporal": {
+      "time_of_day": null,
+      "deadlines": [],
+      "patterns": []
+    }
+  },
+  "active_goals": [
+    {
+      "id": 101,
+      "description": "book_movie",
+      "priority": 0.9,
+      "progress": 0.5,
+      "deadline": null,
+      "subgoals": []
+    }
+  ],
+  "resources": {
+    "computational": {
+      "cpu_percent": 10.0,
+      "memory_bytes": 1024,
+      "storage_bytes": 1024,
+      "network_bandwidth": 100
+    },
+    "external": {}
+  },
+  "fingerprint": 0,
+  "embeddings": null
+}
+```
+
+| Field | Type | Required | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `environment` | `EnvironmentState` | ✅ Yes | — | Environment state |
+| `active_goals` | `Goal[]` | ✅ Yes | — | Active goals (can be `[]`) |
+| `resources` | `ResourceState` | ✅ Yes | — | Resource availability |
+| `fingerprint` | `u64` | ⚙️ Auto | `0` | Server auto-computes if `0` |
+| `embeddings` | `f32[] \| null` | No | `null` | Context embeddings |
+
+### EnvironmentState
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `variables` | `Map<String, JSON>` | ✅ Yes | Key-value pairs |
+| `spatial` | `SpatialContext \| null` | No | Spatial information |
+| `temporal` | `TemporalContext` | ✅ Yes | Temporal information |
+
+### TemporalContext
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `time_of_day` | `TimeOfDay \| null` | No | Current time |
+| `deadlines` | `Deadline[]` | ✅ Yes | Active deadlines (can be `[]`) |
+| `patterns` | `TemporalPattern[]` | ✅ Yes | Recurring patterns (can be `[]`) |
+
+### Goal
+
+| Field | Type | Required | Range | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | `u64` | ✅ Yes | Any | Goal identifier |
+| `description` | `String` | ✅ Yes | — | Human-readable description |
+| `priority` | `f32` | ✅ Yes | `0.0`–`1.0` | Priority level |
+| `progress` | `f32` | ✅ Yes | `0.0`–`1.0` | Completion progress |
+| `deadline` | `u64 \| null` | No | Timestamp | Optional deadline |
+| `subgoals` | `u64[]` | ✅ Yes | — | Child goal IDs (can be `[]`) |
+
+### ComputationalResources
+
+| Field | Type | Required | Range | Unit |
+| :--- | :--- | :--- | :--- | :--- |
+| `cpu_percent` | `f32` | ✅ Yes | `0.0`–`100.0` | Percentage |
+| `memory_bytes` | `u64` | ✅ Yes | Any | Bytes |
+| `storage_bytes` | `u64` | ✅ Yes | Any | Bytes |
+| `network_bandwidth` | `u64` | ✅ Yes | Any | Bytes/sec |
+
+---
+
+## MetadataValue
+
+Metadata values are typed wrappers:
+
+```json
+{ "String": "text value" }
+{ "Integer": 123 }
+{ "Float": 45.67 }
+{ "Boolean": true }
+{ "Json": { "any": "json" } }
+```
+
+<Tip>
+  Store fields you need to filter by (like `user_id`) in the `metadata` object. This makes them searchable in the graph layer.
+</Tip>
+
+---
+
+## Value constraints
+
+**Numeric ranges:**
+- `priority`, `progress`, `confidence`: `0.0` to `1.0`
+- `cpu_percent`: `0.0` to `100.0`
+- `hour`: `0` to `23`
+- `minute`: `0` to `59`
+
+**ID fields:**
+- `EventId` is a `u128` (128-bit integer)
+- All other IDs are `u64` (64-bit integers)
+
+**String fields:**
+- Cannot be empty unless explicitly noted
+- `agent_type`, `action_name`, `description` must be non-empty
+
+**Array fields:**
+- Can be empty `[]` unless explicitly required to have elements

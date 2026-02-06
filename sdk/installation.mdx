@@ -1,0 +1,105 @@
+---
+title: "Installation & setup"
+sidebarTitle: "Installation"
+description: "Install the minns-sdk and configure the EventGraphDB client for your application."
+---
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm install minns-sdk
+```
+
+```bash yarn
+yarn add minns-sdk
+```
+
+```bash pnpm
+pnpm add minns-sdk
+```
+</CodeGroup>
+
+## Client configuration
+
+Create a client instance with `createClient`. All options have sensible defaults — only `baseUrl` is required.
+
+```typescript
+import { createClient } from 'minns-sdk';
+
+const client = createClient({
+  baseUrl: "http://localhost:3000",
+  enableDefaultTelemetry: true,
+  defaultAsync: true,
+  autoBatch: true,
+  batchInterval: 100,
+  batchMaxSize: 20,
+  maxQueueSize: 1000,
+});
+```
+
+### Configuration options
+
+| Option | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `baseUrl` | `string` | — | Base URL of your EventGraphDB server |
+| `enableDefaultTelemetry` | `boolean` | `true` | Enable fire-and-forget performance telemetry |
+| `defaultAsync` | `boolean` | `true` | When `true`, `processEvent()` returns a local receipt immediately |
+| `autoBatch` | `boolean` | `false` | Buffer events locally and flush in batches |
+| `batchInterval` | `number` | `100` | Flush the batch queue every N milliseconds |
+| `batchMaxSize` | `number` | `20` | Flush when the queue reaches N events |
+| `maxQueueSize` | `number` | `1000` | Maximum local queue depth. `enqueue()` throws if exceeded |
+
+## Two ways to submit events
+
+The SDK provides two submission modes:
+
+### `send()` — synchronous
+
+Waits for the server response before continuing. Use this when you need the response immediately.
+
+```typescript
+const response = await client.event("research-agent", { agentId: 123, sessionId: 456 })
+  .action("search_database", { query: "quantum computing" })
+  .outcome({ resultsFound: 10 })
+  .send();
+
+console.log(response.nodes_created); // 5
+```
+
+### `enqueue()` — asynchronous
+
+Returns a local acknowledgement immediately and queues the event for background submission. Use this to keep your agent loop fast.
+
+```typescript
+const receipt = await client.event("research-agent")
+  .observation("web_page", { target: "https://github.com" })
+  .enqueue();
+```
+
+<Warning>
+  Always call `await client.flush()` before your process exits to ensure all queued events are submitted.
+</Warning>
+
+## Direct event submission
+
+You can also bypass the fluent builder and submit raw `Event` objects:
+
+```typescript
+// Single event
+const response = await client.processEvent(event, { enableSemantic: true });
+
+// Multiple events (automatically chunked by batchMaxSize)
+const response = await client.processEvents([event1, event2, event3]);
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Event builder" icon="wrench" href="/sdk/event-builder">
+    Build rich events with the fluent API.
+  </Card>
+  <Card title="Memory & strategies" icon="brain" href="/sdk/memory-strategies">
+    Query memories, claims, and learned strategies.
+  </Card>
+</CardGroup>

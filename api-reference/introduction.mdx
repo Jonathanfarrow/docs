@@ -1,33 +1,89 @@
 ---
-title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
+title: "API overview"
+sidebarTitle: "Overview"
+description: "The EventGraphDB REST API — base URL, authentication, conventions, and system limits."
 ---
 
-<Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-</Note>
+## Base URL
 
-## Welcome
-
-There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
-
-<Card
-  title="Plant Store Endpoints"
-  icon="leaf"
-  href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
->
-  View the OpenAPI specification file
-</Card>
-
-## Authentication
-
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
-
-```json
-"security": [
-  {
-    "bearerAuth": []
-  }
-]
 ```
+http://localhost:3000
+```
+
+All endpoints are prefixed with `/api/`. There is no `/v1/` prefix.
+
+<Info>
+  The base URL defaults to `http://localhost:3000` for local development. Update this to your production URL when deploying.
+</Info>
+
+## Request format
+
+- All request bodies use **JSON** (`Content-Type: application/json`).
+- All responses return **JSON**.
+- Timestamps are `u64` values representing **nanoseconds since Unix epoch**.
+- IDs are unsigned integers: `u64` for most identifiers, `u128` for `EventId`.
+
+## Server-generated fields
+
+The server automatically generates certain fields if you omit them:
+
+| Field | Auto-generated | Description |
+| :--- | :--- | :--- |
+| `event.id` | ✅ Yes | UUID generated if omitted |
+| `event.timestamp` | ✅ Yes | Current timestamp generated if omitted |
+| `context.fingerprint` | ✅ Yes | Hash computed if set to `0` or omitted |
+
+<Tip>
+  **Best practice:** Omit `id`, `timestamp`, and `fingerprint` and let the server generate them. This ensures consistency and reduces client complexity.
+</Tip>
+
+## Null vs. omitted fields
+
+| Scenario | Example | Behavior |
+| :--- | :--- | :--- |
+| **Required** | `"agent_id": 1` | Must be present with a valid value |
+| **Server-generated** | Omit `"id"` | Server auto-generates |
+| **Optional with default** | Omit `"limit"` | Uses default value (usually `10`) |
+| **Optional, nullable** | `"deadline": null` | Can be omitted or explicitly set to `null` |
+| **Optional, non-nullable** | `"causality_chain": []` | Can be omitted (defaults to `[]`) but cannot be `null` |
+
+## Default query limits
+
+| Parameter | Default | Maximum |
+| :--- | :--- | :--- |
+| `limit` | `10` | `1000` |
+| Claims per event | — | `10` |
+| Claim confidence threshold | — | `0.7` minimum for storage |
+
+## System profiles
+
+| Feature | Free | Normal |
+| :--- | :--- | :--- |
+| Max graph size | 50,000 nodes | 1,000,000 nodes |
+| Memory cache | 1,000 items | 10,000 items |
+| Strategy cache | 500 items | 5,000 items |
+| Redb cache | 64 MB | 256 MB |
+| Louvain analytics | Disabled | Enabled |
+
+## Endpoint groups
+
+<CardGroup cols={2}>
+  <Card title="Events" icon="bolt" href="/api-reference/events/process-event">
+    Ingest events, retrieve event history, and view episodes.
+  </Card>
+  <Card title="Memory" icon="brain" href="/api-reference/memory/get-agent-memories">
+    Query long-term memories by agent or by context.
+  </Card>
+  <Card title="Strategies" icon="chess" href="/api-reference/strategies/get-strategies">
+    Retrieve and search learned behavioral strategies.
+  </Card>
+  <Card title="Claims" icon="quote-left" href="/api-reference/claims/list-claims">
+    List, get, and search extracted facts.
+  </Card>
+  <Card title="Graph" icon="diagram-project" href="/api-reference/graph/get-graph">
+    Explore the knowledge graph, analytics, and communities.
+  </Card>
+  <Card title="System" icon="heart-pulse" href="/api-reference/system/health">
+    Health checks and server status.
+  </Card>
+</CardGroup>

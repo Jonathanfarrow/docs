@@ -1,0 +1,151 @@
+---
+title: "Process event"
+sidebarTitle: "POST Process event"
+description: "Ingest a new event and trigger automatic graph construction, episode detection, and claim extraction."
+api: "POST /api/events"
+---
+
+## Request body
+
+<ParamField body="event" type="Event" required>
+  Complete event object. See [Types & primitives](/api-reference/types) for the full schema.
+</ParamField>
+
+<ParamField body="enable_semantic" type="boolean" default="false">
+  Enable semantic processing (NER, claims, embeddings). Set to `true` to extract claims from event content.
+</ParamField>
+
+### Minimal example (server generates ID and timestamp)
+
+```json
+{
+  "event": {
+    "agent_id": 1,
+    "agent_type": "movie-bot",
+    "session_id": 5001,
+    "event_type": {
+      "Communication": {
+        "message_type": "user_message",
+        "sender": 0,
+        "recipient": 1,
+        "content": { "text": "I want to book Interstellar for tonight." }
+      }
+    },
+    "context": {
+      "active_goals": [
+        {
+          "id": 101,
+          "description": "book_movie",
+          "priority": 0.9,
+          "progress": 0.1,
+          "subgoals": []
+        }
+      ],
+      "environment": {
+        "variables": { "user_id": "user_99" },
+        "temporal": {
+          "deadlines": [],
+          "patterns": []
+        }
+      },
+      "resources": {
+        "computational": {
+          "cpu_percent": 10.0,
+          "memory_bytes": 1024,
+          "storage_bytes": 1024,
+          "network_bandwidth": 100
+        },
+        "external": {}
+      }
+    },
+    "metadata": { "user_id": { "String": "user_99" } }
+  },
+  "enable_semantic": true
+}
+```
+
+### Full example (client provides all fields)
+
+```json
+{
+  "event": {
+    "id": 123456789012345678901234567890,
+    "timestamp": 1738425600000000000,
+    "agent_id": 1,
+    "agent_type": "movie-bot",
+    "session_id": 5001,
+    "event_type": {
+      "Communication": {
+        "message_type": "user_message",
+        "sender": 0,
+        "recipient": 1,
+        "content": { "text": "I want to book Interstellar for tonight." }
+      }
+    },
+    "causality_chain": [],
+    "context": {
+      "active_goals": [
+        {
+          "id": 101,
+          "description": "book_movie",
+          "priority": 0.9,
+          "progress": 0.1,
+          "deadline": null,
+          "subgoals": []
+        }
+      ],
+      "environment": {
+        "variables": { "user_id": "user_99" },
+        "spatial": null,
+        "temporal": {
+          "time_of_day": null,
+          "deadlines": [],
+          "patterns": []
+        }
+      },
+      "resources": {
+        "computational": {
+          "cpu_percent": 10.0,
+          "memory_bytes": 1024,
+          "storage_bytes": 1024,
+          "network_bandwidth": 100
+        },
+        "external": {}
+      },
+      "fingerprint": 0,
+      "embeddings": null
+    },
+    "metadata": { "user_id": { "String": "user_99" } },
+    "context_size_bytes": 0,
+    "segment_pointer": null
+  },
+  "enable_semantic": true
+}
+```
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  Whether processing succeeded.
+</ResponseField>
+
+<ResponseField name="nodes_created" type="integer">
+  Number of graph nodes created.
+</ResponseField>
+
+<ResponseField name="patterns_detected" type="integer">
+  Number of patterns detected.
+</ResponseField>
+
+<ResponseField name="processing_time_ms" type="integer">
+  Processing time in milliseconds.
+</ResponseField>
+
+```json
+{
+  "success": true,
+  "nodes_created": 5,
+  "patterns_detected": 2,
+  "processing_time_ms": 15
+}
+```

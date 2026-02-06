@@ -1,0 +1,41 @@
+---
+title: "Get events"
+sidebarTitle: "GET Events"
+description: "Retrieve recent events from the database."
+api: "GET /api/events"
+---
+
+## Query parameters
+
+<ParamField query="limit" type="integer" default="10">
+  Maximum number of events to return. Max: `1000`.
+</ParamField>
+
+## Response
+
+Returns an array of `Event` objects. See [Types & primitives](/api-reference/types) for the full Event schema.
+
+```json
+[
+  {
+    "id": 123456789012345678901234567890,
+    "timestamp": 1738425600000000000,
+    "agent_id": 1,
+    "agent_type": "movie-bot",
+    "session_id": 5001,
+    "event_type": {
+      "Communication": {
+        "message_type": "user_message",
+        "sender": 0,
+        "recipient": 1,
+        "content": { "text": "I want to book Interstellar for tonight." }
+      }
+    },
+    "causality_chain": [],
+    "context": { "..." : "..." },
+    "metadata": { "user_id": { "String": "user_99" } },
+    "context_size_bytes": 0,
+    "segment_pointer": null
+  }
+]
+```

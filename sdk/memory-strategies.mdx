@@ -1,0 +1,174 @@
+---
+title: "Memory & strategies"
+description: "Query agent memories, search claims, retrieve strategies, and get action suggestions via the SDK."
+---
+
+The SDK provides high-level methods for querying EventGraphDB's memory, knowledge, and strategy systems.
+
+## Memory
+
+### Get agent memories
+
+Retrieve long-term memories for a specific agent.
+
+```typescript
+const memories = await client.getAgentMemories(1, 10); // agentId, limit
+
+memories.forEach(m => {
+  console.log(`Memory #${m.id} — strength: ${m.strength}, type: ${m.memory_type}`);
+  console.log(`  Outcome: ${m.outcome}`);
+});
+```
+
+### Search by context
+
+Find memories relevant to the agent's current situation. This is the most powerful retrieval method — it matches the current goal and environment against past episodes.
+
+```typescript
+const memories = await client.getContextMemories(
+  {
+    active_goals: [
+      { id: 101, description: "book_movie", priority: 0.9, progress: 0.5, subgoals: [] }
+    ],
+    environment: {
+      variables: { user_id: "user_99" },
+      temporal: { deadlines: [], patterns: [] }
+    },
+    resources: {
+      computational: {
+        cpu_percent: 50.0,
+        memory_bytes: 1024000,
+        storage_bytes: 1024000000,
+        network_bandwidth: 1000
+      },
+      external: {}
+    }
+  },
+  { limit: 5, min_similarity: 0.8 }
+);
+```
+
+<Tip>
+  The system uses a **context fingerprint** (a hash of the context) to find near-identical situations instantly. Use this to maintain state across sessions.
+</Tip>
+
+## Claims (semantic knowledge)
+
+### Search claims
+
+Query extracted facts using natural language. Claims are atomic pieces of knowledge like *"User prefers Sci-Fi"* or *"Seat H12 was unavailable."*
+
+```typescript
+const claims = await client.searchClaims({
+  query_text: "What kind of seating does the user prefer?",
+  top_k: 3,
+  min_similarity: 0.7,
+});
+
+claims.forEach(c => {
+  console.log(`${c.claim_text} (confidence: ${c.confidence})`);
+});
+```
+
+<Info>
+  Keep the `query_text` natural. Don't include IDs in the string — filter the results in your application code instead.
+</Info>
+
+## Strategies
+
+### Get agent strategies
+
+Retrieve learned behavioral patterns for an agent.
+
+```typescript
+const strategies = await client.getAgentStrategies(1, 10);
+
+strategies.forEach(s => {
+  console.log(`Strategy: ${s.name} — quality: ${s.quality_score}`);
+  console.log(`  Success: ${s.success_count}, Failures: ${s.failure_count}`);
+  s.reasoning_steps.forEach(step => {
+    console.log(`  ${step.sequence_order}. ${step.description}`);
+  });
+});
+```
+
+### Find similar strategies
+
+Search for strategies that match a given set of goals or tools. Use this to share wisdom between agents.
+
+```typescript
+const similar = await client.getSimilarStrategies({
+  goal_ids: [101],
+  tool_names: ["search_api", "booking_api"],
+  result_types: [],
+  limit: 5,
+  min_score: 0.7,
+});
+
+similar.forEach(s => {
+  console.log(`${s.name} — similarity: ${s.score}, quality: ${s.quality_score}`);
+});
+```
+
+### Get action suggestions (Policy Guide)
+
+Ask the system *"What should the agent do next?"* based on the current context.
+
+```typescript
+const suggestions = await client.getActionSuggestions(contextHash, lastActionNode, 5);
+
+suggestions.forEach(s => {
+  console.log(`→ ${s.action_name} (${(s.success_probability * 100).toFixed(0)}% success)`);
+  console.log(`  Evidence: ${s.evidence_count} past examples`);
+  console.log(`  Reasoning: ${s.reasoning}`);
+});
+```
+
+## Graph exploration
+
+### Get graph structure
+
+```typescript
+const graph = await client.getGraph({ limit: 100, session_id: 5001 });
+
+console.log(`${graph.nodes.length} nodes, ${graph.edges.length} edges`);
+```
+
+### Get context-anchored subgraph
+
+```typescript
+const subgraph = await client.getGraphByContext({
+  context_hash: contextHash,
+  limit: 50,
+});
+```
+
+### Query nodes by properties
+
+```typescript
+const result = await client.queryGraphNodes({
+  node_types: ["Action"],
+  property_filters: [{ key: "action_name", value: "book_movie_ticket", operator: "equals" }],
+});
+```
+
+### Traverse relationships
+
+```typescript
+const traversal = await client.traverseGraph({
+  start_node_id: 42,
+  max_depth: 3,
+  edge_types: ["CausedBy", "LeadsTo"],
+});
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Query selection guide" icon="magnifying-glass" href="/guides/query-selection">
+    Learn which search method to use for every situation.
+  </Card>
+  <Card title="Sidecar intent parsing" icon="wand-magic-sparkles" href="/sdk/sidecar">
+    Extract structured intents from LLM responses locally.
+  </Card>
+</CardGroup>

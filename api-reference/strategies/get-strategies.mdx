@@ -1,0 +1,75 @@
+---
+title: "Get agent strategies"
+sidebarTitle: "GET Strategies"
+description: "Retrieve learned behavioral strategies for a specific agent."
+api: "GET /api/strategies/agent/{agent_id}"
+---
+
+## Path parameters
+
+<ParamField path="agent_id" type="integer" required>
+  Agent identifier (`u64`).
+</ParamField>
+
+## Query parameters
+
+<ParamField query="limit" type="integer" default="10">
+  Maximum number of strategies to return. Max: `1000`.
+</ParamField>
+
+## Response
+
+Returns an array of `StrategyResponse` objects.
+
+<ResponseField name="id" type="integer">Strategy identifier.</ResponseField>
+<ResponseField name="name" type="string">Strategy name.</ResponseField>
+<ResponseField name="agent_id" type="integer">Agent that learned this strategy.</ResponseField>
+<ResponseField name="quality_score" type="number">Quality score (`0.0`–`1.0`).</ResponseField>
+<ResponseField name="success_count" type="integer">Number of successes.</ResponseField>
+<ResponseField name="failure_count" type="integer">Number of failures.</ResponseField>
+<ResponseField name="reasoning_steps" type="ReasoningStepResponse[]">Ordered steps in the strategy.</ResponseField>
+<ResponseField name="strategy_type" type="string">Strategy classification.</ResponseField>
+<ResponseField name="support_count" type="integer">Number of supporting episodes.</ResponseField>
+<ResponseField name="expected_success" type="number">Expected success rate (`0.0`–`1.0`).</ResponseField>
+<ResponseField name="expected_cost" type="number">Expected cost.</ResponseField>
+<ResponseField name="expected_value" type="number">Expected value.</ResponseField>
+<ResponseField name="confidence" type="number">Confidence in strategy (`0.0`–`1.0`).</ResponseField>
+<ResponseField name="goal_bucket_id" type="integer">Associated goal bucket.</ResponseField>
+<ResponseField name="behavior_signature" type="string">Unique behavior signature.</ResponseField>
+<ResponseField name="precondition" type="string">When to apply this strategy.</ResponseField>
+<ResponseField name="action_hint" type="string">Suggested action.</ResponseField>
+
+### ReasoningStepResponse
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `description` | `String` | Step description |
+| `sequence_order` | `usize` | Order in the sequence |
+
+```json
+[
+  {
+    "id": 1,
+    "name": "movie_booking_standard",
+    "agent_id": 1,
+    "quality_score": 0.92,
+    "success_count": 15,
+    "failure_count": 2,
+    "reasoning_steps": [
+      { "description": "Greet user and confirm movie title", "sequence_order": 0 },
+      { "description": "Check seat availability", "sequence_order": 1 },
+      { "description": "Process booking", "sequence_order": 2 }
+    ],
+    "strategy_type": "sequential",
+    "support_count": 17,
+    "expected_success": 0.88,
+    "expected_cost": 0.15,
+    "expected_value": 0.85,
+    "confidence": 0.91,
+    "goal_bucket_id": 101,
+    "behavior_signature": "greet→check→book",
+    "precondition": "User requests movie booking",
+    "action_hint": "Start with greeting and title confirmation"
+  }
+]
+```

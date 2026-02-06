@@ -1,0 +1,62 @@
+---
+title: "Sidecar intent parsing"
+description: "Extract structured intents from LLM responses locally — no network round-trips required."
+---
+
+The **Sidecar** pattern lets you extract structured intents from LLM responses entirely on the client side. This is useful when your agent needs to parse tool calls, user intents, or structured data from free-form LLM output without making additional API calls.
+
+## How it works
+
+1. **Generate instructions** — build a prompt instruction block that tells your LLM how to format its output.
+2. **Parse locally** — extract the structured intent from the LLM response using a local parser.
+
+All sidecar utilities are exported from the main `minns-sdk` entry point.
+
+## Usage
+
+```typescript
+import { buildSidecarInstruction, extractIntentAndResponse } from 'minns-sdk';
+
+// 1. Generate prompt instructions for your LLM
+const instruction = buildSidecarInstruction(spec);
+// Append `instruction` to your system prompt
+
+// 2. After receiving the LLM response, parse it locally
+const { intent, assistantResponse } = extractIntentAndResponse(
+  modelOutput,
+  userMsg,
+  spec
+);
+
+// 3. Use the structured intent
+console.log(intent);           // { action: "book_ticket", movie: "Interstellar", ... }
+console.log(assistantResponse); // "I've booked your ticket for Interstellar!"
+```
+
+## Benefits
+
+<CardGroup cols={2}>
+  <Card title="Zero latency" icon="bolt">
+    No network round-trips — parsing happens entirely in your process.
+  </Card>
+  <Card title="LLM agnostic" icon="shuffle">
+    Works with any LLM that can follow formatting instructions (GPT-4, Claude, Llama, etc.).
+  </Card>
+  <Card title="Type safe" icon="shield-check">
+    Full TypeScript support with generics for your intent schema.
+  </Card>
+  <Card title="Resilient" icon="helmet-safety">
+    Built-in protection against malformed LLM output.
+  </Card>
+</CardGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Security & resilience" icon="lock" href="/sdk/security">
+    Learn about the SDK's built-in safety features.
+  </Card>
+  <Card title="Event builder" icon="wrench" href="/sdk/event-builder">
+    Build events from the parsed intents.
+  </Card>
+</CardGroup>

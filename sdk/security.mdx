@@ -1,0 +1,81 @@
+---
+title: "Security & resilience"
+description: "Built-in protections against circular references, prototype pollution, oversized payloads, and queue overflow."
+---
+
+The SDK is designed to be resilient against erratic LLM outputs and large data structures. Every event passes through multiple safety checks before submission.
+
+## Circular reference protection
+
+LLM-generated objects can accidentally contain circular references. The SDK automatically detects these and replaces them with `"[Circular]"` during serialization.
+
+```typescript
+const obj: any = { name: "test" };
+obj.self = obj; // Circular!
+
+// SDK handles this gracefully
+await client.event("agent")
+  .action("process", obj)
+  .send(); // Serialized with "[Circular]" placeholder
+```
+
+## Prototype pollution protection
+
+The SDK strips dangerous JavaScript keys during serialization to prevent prototype pollution attacks:
+
+- `__proto__`
+- `constructor`
+- `prototype`
+
+This is especially important when processing untrusted LLM output that could contain adversarial payloads.
+
+## Size guarding
+
+Payloads exceeding `maxPayloadSize` (default: **1 MB**) are rejected **after** serialization. This prevents accidental submission of oversized events that could degrade server performance.
+
+<Info>
+  The size check happens after JSON serialization, so the actual byte size of the serialized payload is what's measured — not the in-memory object size.
+</Info>
+
+## Queue management
+
+The local auto-batch queue has a configurable maximum depth (`maxQueueSize`, default: **1000**). If the queue is full, `enqueue()` throws an error rather than silently dropping events.
+
+```typescript
+const client = createClient({
+  baseUrl: "http://localhost:3000",
+  autoBatch: true,
+  maxQueueSize: 5000, // Increase for high-throughput agents
+});
+```
+
+## Telemetry
+
+The SDK includes opt-in, fire-and-forget telemetry to monitor performance and LLM token usage.
+
+| What's collected | What's NOT collected |
+| :--- | :--- |
+| Latency metrics | Request bodies |
+| HTTP status codes | Raw event content |
+| Estimated token counts | User data |
+| Error messages | Metadata values |
+
+Telemetry is enabled by default. To opt out:
+
+```typescript
+const client = createClient({
+  baseUrl: "http://localhost:3000",
+  enableDefaultTelemetry: false,
+});
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/sdk/installation">
+    Review all client configuration options.
+  </Card>
+  <Card title="API Reference" icon="square-terminal" href="/api-reference/introduction">
+    Explore the full REST API.
+  </Card>
+</CardGroup>

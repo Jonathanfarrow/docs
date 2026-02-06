@@ -1,0 +1,62 @@
+---
+title: "List claims"
+sidebarTitle: "GET Claims"
+description: "List all extracted facts (claims) from processed events."
+api: "GET /api/claims"
+---
+
+## Query parameters
+
+<ParamField query="limit" type="integer" default="10">
+  Maximum number of claims to return. Max: `1000`.
+</ParamField>
+
+<ParamField query="event_id" type="integer">
+  Filter by source event ID (`u128`). Set to `null` to list all claims.
+</ParamField>
+
+## Response
+
+Returns an array of `ClaimResponse` objects.
+
+<ResponseField name="claim_id" type="integer">Claim identifier.</ResponseField>
+<ResponseField name="claim_text" type="string">The extracted claim/fact.</ResponseField>
+<ResponseField name="confidence" type="number">Extraction confidence (`0.0`–`1.0`).</ResponseField>
+<ResponseField name="source_event_id" type="integer">Source event ID (`u128`).</ResponseField>
+<ResponseField name="similarity" type="number | null">`null` for list results. Populated in search results.</ResponseField>
+<ResponseField name="evidence_spans" type="EvidenceSpanResponse[]">Supporting evidence from source text.</ResponseField>
+<ResponseField name="support_count" type="integer">Number of supporting instances.</ResponseField>
+<ResponseField name="status" type="string">One of: `"Active"`, `"Contradicted"`, `"Deprecated"`.</ResponseField>
+<ResponseField name="created_at" type="integer">Creation timestamp.</ResponseField>
+<ResponseField name="last_accessed" type="integer">Last access timestamp.</ResponseField>
+
+### EvidenceSpanResponse
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `start_offset` | `usize` | Start position in source text |
+| `end_offset` | `usize` | End position in source text |
+| `text_snippet` | `String` | Extracted text snippet |
+
+```json
+[
+  {
+    "claim_id": 42,
+    "claim_text": "User prefers Sci-Fi movies",
+    "confidence": 0.92,
+    "source_event_id": 123456789012345678901234567890,
+    "similarity": null,
+    "evidence_spans": [
+      {
+        "start_offset": 15,
+        "end_offset": 45,
+        "text_snippet": "I really love Sci-Fi movies"
+      }
+    ],
+    "support_count": 3,
+    "status": "Active",
+    "created_at": 1738425600000000000,
+    "last_accessed": 1738512000000000000
+  }
+]
+```

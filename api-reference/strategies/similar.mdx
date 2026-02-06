@@ -1,0 +1,62 @@
+---
+title: "Find similar strategies"
+sidebarTitle: "POST Similar strategies"
+description: "Find strategies similar to a given set of goals or tools — share wisdom across agents."
+api: "POST /api/strategies/similar"
+---
+
+Use this endpoint when your agent is stuck and needs to find a successful "recipe" from a similar task. This is how you share learned behavior across different agents.
+
+## Request body
+
+<ParamField body="goal_ids" type="integer[]" default="[]">
+  Goal IDs to match against.
+</ParamField>
+
+<ParamField body="tool_names" type="string[]" default="[]">
+  Tool names to match against.
+</ParamField>
+
+<ParamField body="result_types" type="string[]" default="[]">
+  Result types to match against.
+</ParamField>
+
+<ParamField body="context_hash" type="integer">
+  Context fingerprint. Set to `null` to skip.
+</ParamField>
+
+<ParamField body="agent_id" type="integer">
+  Filter by agent. Set to `null` to search across all agents.
+</ParamField>
+
+<ParamField body="limit" type="integer" default="10">
+  Maximum number of results.
+</ParamField>
+
+<ParamField body="min_score" type="number">
+  Minimum similarity score. Set to `null` to return all results.
+</ParamField>
+
+### Example request
+
+```json
+{
+  "goal_ids": [101],
+  "tool_names": ["search_api"],
+  "result_types": [],
+  "context_hash": null,
+  "agent_id": null,
+  "limit": 5,
+  "min_score": 0.7
+}
+```
+
+## Response
+
+Returns an array of `SimilarStrategyResponse` objects — the same as `StrategyResponse` with an additional `score` field.
+
+<ResponseField name="score" type="number">
+  Similarity score (`0.0`–`1.0`).
+</ResponseField>
+
+All other fields are identical to [Get agent strategies](/api-reference/strategies/get-strategies).

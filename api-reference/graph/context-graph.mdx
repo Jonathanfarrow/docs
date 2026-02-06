@@ -1,0 +1,28 @@
+---
+title: "Graph by context"
+sidebarTitle: "GET Context graph"
+description: "Retrieve a subgraph centered around a specific context fingerprint."
+api: "GET /api/graph/context"
+---
+
+## Query parameters
+
+<ParamField query="context_hash" type="integer" required>
+  Context fingerprint (`u64`).
+</ParamField>
+
+<ParamField query="limit" type="integer" default="10">
+  Maximum number of nodes/edges to return.
+</ParamField>
+
+<ParamField query="session_id" type="integer">
+  Filter by session. Omit to return all sessions.
+</ParamField>
+
+<ParamField query="agent_type" type="string">
+  Filter by agent type. Omit to return all agent types.
+</ParamField>
+
+## Response
+
+Returns a `GraphResponse` object (same schema as [Get graph](/api-reference/graph/get-graph)).

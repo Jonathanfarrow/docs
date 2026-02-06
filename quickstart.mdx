@@ -1,80 +1,137 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Get EventGraphDB running and log your first event in under 5 minutes."
 ---
 
-## Get started in three steps
+## Prerequisites
 
-Get your documentation site running locally and make your first customization.
+- **EventGraphDB server** running locally or remotely (default: `http://localhost:3000`)
+- **Node.js** 18 or higher
+- **npm** or your preferred package manager
 
-### Step 1: Set up your local environment
+## Install the SDK
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+<CodeGroup>
+```bash npm
+npm install minns-sdk
+```
 
-### Step 2: Deploy your changes
+```bash yarn
+yarn add minns-sdk
+```
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+```bash pnpm
+pnpm add minns-sdk
+```
+</CodeGroup>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+## Initialize the client
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+```typescript
+import { createClient } from 'minns-sdk';
 
-### Step 3: Go live
+const client = createClient({
+  baseUrl: "http://localhost:3000",
+  defaultAsync: true,
+  autoBatch: true,
+  batchInterval: 100,
+  batchMaxSize: 20,
+});
+```
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+## Log your first event
+
+Use the fluent event builder to send a user message tied to a goal:
+
+```typescript
+const response = await client.event("movie-bot", { agentId: 1, sessionId: 5001 })
+  .context("I want to book Interstellar for tonight.", "conversation")
+  .goal("book_movie", 5)
+  .send();
+
+console.log(response);
+// { success: true, nodes_created: 5, patterns_detected: 2, processing_time_ms: 15 }
+```
+
+## Log an action with an outcome
+
+```typescript
+const actionResponse = await client.event("movie-bot", { agentId: 1, sessionId: 5001 })
+  .action("book_movie_ticket", { movie: "Interstellar", seat: "H12" })
+  .outcome({ confirmation_id: "CONF-123" })
+  .goal("book_movie", 5, 1.0) // progress = 1.0 completes the episode
+  .send();
+```
+
+## Recall memories
+
+After your agent has completed a few episodes, you can query for relevant past experiences:
+
+```typescript
+const memories = await client.getContextMemories({
+  active_goals: [{ id: 101, description: "book_movie", priority: 0.9, progress: 0.5, subgoals: [] }],
+  environment: { variables: { user_id: "user_99" }, temporal: { deadlines: [], patterns: [] } },
+  resources: {
+    computational: { cpu_percent: 50.0, memory_bytes: 1024000, storage_bytes: 1024000000, network_bandwidth: 1000 },
+    external: {}
+  }
+});
+
+console.log(memories);
+```
+
+## Search extracted knowledge
+
+Query soft facts using natural language:
+
+```typescript
+const claims = await client.searchClaims({
+  query_text: "What are the user's movie preferences?",
+  top_k: 3,
+  min_similarity: 0.7,
+});
+
+claims.forEach(c => console.log(c.claim_text));
+```
+
+## Get action suggestions
+
+Ask the Policy Guide what your agent should do next:
+
+```typescript
+const suggestions = await client.getActionSuggestions(contextHash);
+
+suggestions.forEach(s => {
+  console.log(`${s.action_name} — ${(s.success_probability * 100).toFixed(0)}% success`);
+  console.log(`  Reasoning: ${s.reasoning}`);
+});
+```
+
+## Clean shutdown
+
+Always flush the event buffer before your process exits:
+
+```typescript
+await client.flush();
+```
+
+<Warning>
+  If you skip `flush()`, any events still in the local auto-batch queue will be lost.
+</Warning>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Event builder" icon="wrench" href="/sdk/event-builder">
+    Master the full fluent API for building rich events.
+  </Card>
+  <Card title="Core concepts" icon="lightbulb" href="/concepts">
+    Understand how Events, Episodes, and Memories connect.
+  </Card>
+  <Card title="Query selection guide" icon="magnifying-glass" href="/guides/query-selection">
+    Learn which search to use for every situation.
+  </Card>
+  <Card title="API Reference" icon="square-terminal" href="/api-reference/introduction">
+    Explore every endpoint in detail.
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

@@ -1,0 +1,45 @@
+---
+title: "Communities"
+sidebarTitle: "GET Communities"
+description: "Retrieve detected communities using the Louvain algorithm."
+api: "GET /api/communities"
+---
+
+<Info>
+  Community detection requires the **Normal** profile. It is disabled on the **Free** profile.
+</Info>
+
+## Response
+
+<ResponseField name="communities" type="CommunityResponse[]">Array of detected communities.</ResponseField>
+<ResponseField name="modularity" type="number">Modularity score.</ResponseField>
+<ResponseField name="iterations" type="integer">Number of algorithm iterations.</ResponseField>
+<ResponseField name="community_count" type="integer">Total number of communities.</ResponseField>
+
+### CommunityResponse
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `community_id` | `u64` | Community identifier |
+| `node_ids` | `u64[]` | Node IDs in the community |
+| `size` | `usize` | Number of nodes |
+
+```json
+{
+  "communities": [
+    {
+      "community_id": 1,
+      "node_ids": [1, 5, 12, 34, 56],
+      "size": 5
+    },
+    {
+      "community_id": 2,
+      "node_ids": [2, 8, 15, 22],
+      "size": 4
+    }
+  ],
+  "modularity": 0.68,
+  "iterations": 3,
+  "community_count": 2
+}
+```

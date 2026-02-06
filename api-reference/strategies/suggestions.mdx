@@ -1,0 +1,65 @@
+---
+title: "Action suggestions"
+sidebarTitle: "GET Suggestions"
+description: "The Policy Guide endpoint — ask 'What should the agent do next?'"
+api: "GET /api/suggestions"
+---
+
+This is the **Policy Guide** endpoint. Given the current context, it recommends the next best action based on past experiences and learned strategies.
+
+## Query parameters
+
+<ParamField query="context_hash" type="integer" required>
+  Context fingerprint (computed from the current context).
+</ParamField>
+
+<ParamField query="last_action_node" type="integer">
+  Last action node ID. Set to `null` to get suggestions from the start.
+</ParamField>
+
+<ParamField query="limit" type="integer" default="10">
+  Maximum number of suggestions to return.
+</ParamField>
+
+## Response
+
+Returns an array of `ActionSuggestionResponse` objects.
+
+<ResponseField name="action_name" type="string">
+  Suggested action name.
+</ResponseField>
+
+<ResponseField name="success_probability" type="number">
+  Probability of success (`0.0`–`1.0`).
+</ResponseField>
+
+<ResponseField name="evidence_count" type="integer">
+  Number of supporting past examples.
+</ResponseField>
+
+<ResponseField name="reasoning" type="string">
+  Explanation for why this action is recommended.
+</ResponseField>
+
+```json
+[
+  {
+    "action_name": "check_seat_availability",
+    "success_probability": 0.94,
+    "evidence_count": 12,
+    "reasoning": "After confirming the movie title, checking availability has a 94% success rate based on 12 past interactions."
+  }
+]
+```
+
+### Usage with the SDK
+
+```typescript
+const suggestions = await client.getActionSuggestions(contextHash, lastActionNode, 3);
+
+if (suggestions.length > 0) {
+  const best = suggestions[0];
+  console.log(`Recommended: ${best.action_name} (${(best.success_probability * 100).toFixed(0)}% success)`);
+  console.log(`Reasoning: ${best.reasoning}`);
+}
+```

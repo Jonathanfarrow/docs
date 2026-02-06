@@ -1,0 +1,164 @@
+---
+title: "Event builder"
+description: "Use the fluent EventBuilder API to construct rich events with actions, observations, goals, causality, and context."
+---
+
+The `EventBuilder` provides a chainable API for constructing events. Start a builder with `client.event()`, then chain methods to add data.
+
+## Starting a builder
+
+```typescript
+const builder = client.event("movie-bot", { agentId: 1, sessionId: 5001 });
+```
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `agentType` | `string` | Yes | Agent classification (e.g., `"movie-bot"`) |
+| `config` | `EventBuilderConfig` | No | Optional `agentId` and `sessionId` overrides |
+
+## Builder methods
+
+### `action(name, params)`
+
+Define an **Action** event — use this whenever your agent *does* something (calls an API, books a seat, sends an email).
+
+```typescript
+client.event("movie-bot")
+  .action("book_movie_ticket", { movie: "Interstellar", seat: "H12" })
+```
+
+### `outcome(result)`
+
+Attach a success outcome to the previously defined action.
+
+<Warning>
+  `outcome()` requires `action()` earlier in the chain. Calling it without `action()` will throw an error.
+</Warning>
+
+```typescript
+client.event("movie-bot")
+  .action("book_movie_ticket", { movie: "Interstellar", seat: "H12" })
+  .outcome({ confirmation_id: "CONF-123" })
+```
+
+### `observation(type, data, options?)`
+
+Define an **Observation** event — use this when the agent receives external data that isn't a direct message (price updates, sensor readings, API responses).
+
+```typescript
+client.event("movie-bot")
+  .observation("ticket_availability", { remaining_seats: 5 })
+```
+
+<Info>
+  The `data` parameter is stored verbatim — the SDK does not validate payload fields.
+</Info>
+
+### `context(text, type?)`
+
+Define a **Context** event for claim extraction. Use this for raw text content like conversation messages, documents, or transcripts.
+
+```typescript
+client.event("movie-bot")
+  .context("I want to book Interstellar for tonight.", "conversation")
+```
+
+### `state(variables)`
+
+Add environmental state variables to the event context.
+
+```typescript
+client.event("movie-bot")
+  .action("search_movies", { genre: "sci-fi" })
+  .state({ mode: "strict", user_tier: "premium" })
+```
+
+### `goal(text, priority?, progress?)`
+
+Attach an active goal. Goals are how EventGraphDB groups events into episodes.
+
+```typescript
+client.event("movie-bot")
+  .action("book_movie_ticket", { movie: "Interstellar" })
+  .goal("book_movie", 5)         // Priority 1-5
+  .goal("upsell_snacks", 2, 0.0) // Second goal, lower priority
+```
+
+<Tip>
+  Set `progress` to `1.0` on the final event to mark the episode as complete. This triggers memory formation and strategy extraction.
+</Tip>
+
+### `causedBy(parentId)`
+
+Link the event to a parent event, building a causality chain.
+
+```typescript
+client.event("movie-bot")
+  .action("confirm_booking", { booking_id: "BK-42" })
+  .causedBy("previous-event-id")
+```
+
+### `build()`
+
+Return the raw `Event` object without submitting it.
+
+```typescript
+const event = client.event("movie-bot")
+  .action("search_movies", { genre: "sci-fi" })
+  .build();
+
+// Inspect or modify the event before submitting
+console.log(JSON.stringify(event, null, 2));
+```
+
+### `send()`
+
+Build and submit the event. Returns the server response.
+
+```typescript
+const response = await client.event("movie-bot")
+  .action("book_movie_ticket", { movie: "Interstellar" })
+  .outcome({ confirmation_id: "CONF-123" })
+  .goal("book_movie", 5, 1.0)
+  .send();
+```
+
+### `enqueue()`
+
+Build and queue the event for background processing. Returns a local receipt immediately.
+
+```typescript
+const receipt = await client.event("movie-bot")
+  .observation("price_update", { movie: "Interstellar", price: 12.99 })
+  .enqueue();
+```
+
+## Full example
+
+```typescript
+// Complete booking flow event
+const response = await client.event("movie-bot", { agentId: 1, sessionId: 5001 })
+  .action("book_movie_ticket", {
+    movie: "Interstellar",
+    seat: "H12",
+    showtime: "2026-02-06T19:30:00Z"
+  })
+  .outcome({ confirmation_id: "CONF-123", total: 15.99 })
+  .state({ user_tier: "premium", location: "downtown" })
+  .goal("book_movie", 5, 1.0)
+  .causedBy("evt-search-results")
+  .send();
+
+console.log(`Created ${response.nodes_created} nodes in ${response.processing_time_ms}ms`);
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Memory & strategies" icon="brain" href="/sdk/memory-strategies">
+    Query memories and learned strategies via the SDK.
+  </Card>
+  <Card title="Event types reference" icon="list" href="/api-reference/events/event-types">
+    See the full specification for every event type variant.
+  </Card>
+</CardGroup>

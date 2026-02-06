@@ -1,0 +1,75 @@
+---
+title: "Get graph"
+sidebarTitle: "GET Graph"
+description: "Retrieve the graph structure — nodes and edges — for visualization and analysis."
+api: "GET /api/graph"
+---
+
+## Query parameters
+
+<ParamField query="limit" type="integer" default="10">
+  Maximum number of nodes/edges to return.
+</ParamField>
+
+<ParamField query="session_id" type="integer">
+  Filter by session. Omit to return all sessions.
+</ParamField>
+
+<ParamField query="agent_type" type="string">
+  Filter by agent type. Omit to return all agent types.
+</ParamField>
+
+## Response
+
+<ResponseField name="nodes" type="GraphNodeResponse[]">
+  Array of graph nodes.
+</ResponseField>
+
+<ResponseField name="edges" type="GraphEdgeResponse[]">
+  Array of graph edges.
+</ResponseField>
+
+### GraphNodeResponse
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `id` | `u64` | Node identifier |
+| `label` | `String` | Node label |
+| `node_type` | `String` | Type: `"Event"`, `"Goal"`, `"Action"`, `"Context"`, etc. |
+| `created_at` | `u64` | Creation timestamp |
+| `properties` | `JSON` | Node properties (any JSON object) |
+
+### GraphEdgeResponse
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `id` | `u64` | Edge identifier |
+| `from` | `u64` | Source node ID |
+| `to` | `u64` | Target node ID |
+| `edge_type` | `String` | Type: `"CausedBy"`, `"PartOf"`, `"LeadsTo"`, etc. |
+| `weight` | `f32` | Edge weight (`0.0`–`1.0`) |
+| `confidence` | `f32` | Confidence in the edge (`0.0`–`1.0`) |
+
+```json
+{
+  "nodes": [
+    {
+      "id": 1,
+      "label": "user_message",
+      "node_type": "Event",
+      "created_at": 1738425600000000000,
+      "properties": { "message_type": "user_message" }
+    }
+  ],
+  "edges": [
+    {
+      "id": 1,
+      "from": 1,
+      "to": 2,
+      "edge_type": "LeadsTo",
+      "weight": 0.95,
+      "confidence": 0.9
+    }
+  ]
+}
+```

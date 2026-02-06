@@ -1,0 +1,259 @@
+---
+title: "Integration examples"
+sidebarTitle: "Examples"
+description: "End-to-end examples showing how to integrate EventGraphDB into real agent workflows using the minns-sdk."
+---
+
+## Client setup
+
+```typescript
+import { createClient } from 'minns-sdk';
+
+const client = createClient({
+  baseUrl: "http://localhost:3000",
+  defaultAsync: true,
+  autoBatch: true,
+  batchInterval: 100,
+  batchMaxSize: 20,
+  maxQueueSize: 1000,
+});
+```
+
+---
+
+## Movie booking workflow
+
+This example shows a returning user requesting a booking. The agent retrieves hard facts, soft facts, and past experience before responding — all through the SDK.
+
+```typescript
+async function handleMovieBooking(userId: string, userMessage: string) {
+  // 1. Fetch hard facts (member info) from the graph
+  const graph = await client.getGraph({ session_id: 5001, limit: 10 });
+  const userNode = graph.nodes.find(n => n.properties?.user_id === userId);
+  const memberId = userNode?.properties?.member_number || "Guest";
+
+  // 2. Fetch soft facts (preferences) from semantic memory
+  const claims = await client.searchClaims({
+    query_text: "What are the user's movie and seat preferences?",
+    top_k: 3,
+    min_similarity: 0.7,
+  });
+  const preferences = claims.map(c => c.claim_text).join(", ");
+
+  // 3. Fetch process history (last booking state)
+  const memories = await client.getContextMemories(
+    {
+      active_goals: [
+        { id: 101, description: "book_movie", priority: 0.9, progress: 0.0, subgoals: [] }
+      ],
+      environment: {
+        variables: { user_id: userId },
+        temporal: { deadlines: [], patterns: [] }
+      },
+      resources: {
+        computational: {
+          cpu_percent: 50.0,
+          memory_bytes: 1024000,
+          storage_bytes: 1024000000,
+          network_bandwidth: 1000
+        },
+        external: {}
+      }
+    },
+    { limit: 1 }
+  );
+  const lastSession = memories[0]?.outcome || "No previous history";
+
+  // 4. Generate AI response
+  console.log(`AI: Welcome back ${memberId}!`);
+  console.log(`AI: I remember you like: ${preferences}`);
+  console.log(`AI: Last time we were at: ${lastSession}`);
+
+  // 5. Log the new interaction as a Context event
+  await client.event("movie-bot", { agentId: 1, sessionId: 5001 })
+    .context(userMessage, "conversation")
+    .goal("book_movie", 5, 0.1)
+    .state({ user_id: userId })
+    .send();
+}
+```
+
+---
+
+## Action → Outcome flow
+
+Log an action with its result, completing the episode when the goal is done:
+
+```typescript
+async function bookTicket(userId: string, movie: string, seat: string) {
+  // Log the agent's reasoning
+  await client.event("movie-bot", { agentId: 1, sessionId: 5001 })
+    .observation("seat_availability", { movie, seat, available: true })
+    .goal("book_movie", 5, 0.5)
+    .state({ user_id: userId })
+    .enqueue();
+
+  // Log the booking action with outcome
+  const response = await client.event("movie-bot", { agentId: 1, sessionId: 5001 })
+    .action("book_movie_ticket", { movie, seat, showtime: "2026-02-06T19:30:00Z" })
+    .outcome({ confirmation_id: "CONF-123", total: 15.99 })
+    .goal("book_movie", 5, 1.0) // progress = 1.0 → episode complete
+    .state({ user_id: userId })
+    .causedBy("evt-seat-check")
+    .send();
+
+  console.log(`Booked! Created ${response.nodes_created} nodes in ${response.processing_time_ms}ms`);
+}
+```
+
+---
+
+## Polling for action suggestions
+
+Ask the Policy Guide what the agent should do next, then execute the recommendation:
+
+```typescript
+async function getNextAction(contextHash: number) {
+  const suggestions = await client.getActionSuggestions(contextHash, undefined, 1);
+
+  if (suggestions.length > 0) {
+    const best = suggestions[0];
+    console.log(`Recommended: ${best.action_name}`);
+    console.log(`Success probability: ${(best.success_probability * 100).toFixed(0)}%`);
+    console.log(`Evidence: ${best.evidence_count} past examples`);
+    console.log(`Reasoning: ${best.reasoning}`);
+    return best;
+  }
+
+  return null;
+}
+```
+
+---
+
+## Sharing strategies across agents
+
+Find successful strategies from one agent and apply them to another:
+
+```typescript
+async function findRelevantStrategy(goalId: number, tools: string[]) {
+  const strategies = await client.getSimilarStrategies({
+    goal_ids: [goalId],
+    tool_names: tools,
+    result_types: [],
+    limit: 3,
+    min_score: 0.7,
+  });
+
+  strategies.forEach(s => {
+    console.log(`Strategy: ${s.name} (similarity: ${s.score})`);
+    console.log(`  Quality: ${s.quality_score}, Confidence: ${s.confidence}`);
+    console.log(`  Precondition: ${s.precondition}`);
+    console.log(`  Hint: ${s.action_hint}`);
+    s.reasoning_steps.forEach(step => {
+      console.log(`  ${step.sequence_order + 1}. ${step.description}`);
+    });
+  });
+
+  return strategies;
+}
+
+// Agent A learned a booking strategy; Agent B can reuse it
+const recipes = await findRelevantStrategy(202, ["payment_gateway", "booking_api"]);
+```
+
+---
+
+## Complete agent loop
+
+A full agent loop that combines memory, strategy, claims, and event logging:
+
+```typescript
+import { createClient } from 'minns-sdk';
+
+async function agentLoop(userId: string) {
+  const client = createClient({
+    baseUrl: "http://localhost:3000",
+    autoBatch: true,
+    batchInterval: 100,
+    batchMaxSize: 20,
+  });
+
+  try {
+    while (true) {
+      const userMessage = await getUserInput(); // Your input method
+      if (userMessage === "quit") break;
+
+      // 1. Log the user message (enqueue for speed)
+      const receipt = await client.event("assistant", { agentId: 1, sessionId: Date.now() })
+        .context(userMessage, "conversation")
+        .goal("assist_user", 5, 0.5)
+        .state({ user_id: userId })
+        .enqueue();
+
+      // 2. Search relevant knowledge
+      const claims = await client.searchClaims({
+        query_text: userMessage,
+        top_k: 5,
+        min_similarity: 0.6,
+      });
+
+      // 3. Retrieve past memories for this context
+      const memories = await client.getAgentMemories(1, 5);
+
+      // 4. Get action suggestions from the Policy Guide
+      const suggestions = await client.getActionSuggestions(receipt.contextHash);
+
+      // 5. Generate response using suggestions + claims + memories
+      const response = generateResponse(userMessage, suggestions, claims, memories);
+
+      // 6. Log the agent response (send to wait for confirmation)
+      await client.event("assistant", { agentId: 1, sessionId: Date.now() })
+        .action("respond", { response })
+        .outcome({ delivered: true })
+        .goal("assist_user", 5, 1.0) // Mark goal complete
+        .send();
+
+      console.log(`Agent: ${response}`);
+    }
+  } finally {
+    await client.flush(); // Always flush on shutdown
+  }
+}
+```
+
+<Warning>
+  Always wrap your agent loop in a `try/finally` and call `client.flush()` to prevent queued events from being lost.
+</Warning>
+
+---
+
+## Using the Sidecar for intent extraction
+
+Combine the Sidecar parser with the event builder to log structured intents:
+
+```typescript
+import { createClient, buildSidecarInstruction, extractIntentAndResponse } from 'minns-sdk';
+
+async function handleLLMResponse(modelOutput: string, userMsg: string, spec: any) {
+  // 1. Parse the LLM output locally (no network call)
+  const { intent, assistantResponse } = extractIntentAndResponse(modelOutput, userMsg, spec);
+
+  // 2. Log the intent as an action event
+  if (intent.action) {
+    await client.event("assistant", { agentId: 1, sessionId: 5001 })
+      .action(intent.action, intent.parameters)
+      .outcome(intent.result)
+      .goal(intent.goal || "assist_user", 4)
+      .send();
+  }
+
+  // 3. Log the conversation context for claim extraction
+  await client.event("assistant", { agentId: 1, sessionId: 5001 })
+    .context(assistantResponse, "conversation")
+    .goal(intent.goal || "assist_user", 4)
+    .enqueue();
+
+  return assistantResponse;
+}
+```

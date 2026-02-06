@@ -1,0 +1,89 @@
+---
+title: "Get agent memories"
+sidebarTitle: "GET Agent memories"
+description: "Retrieve long-term memories for a specific agent."
+api: "GET /api/memories/agent/{agent_id}"
+---
+
+## Path parameters
+
+<ParamField path="agent_id" type="integer" required>
+  Agent identifier (`u64`).
+</ParamField>
+
+## Query parameters
+
+<ParamField query="limit" type="integer" default="10">
+  Maximum number of memories to return. Max: `1000`.
+</ParamField>
+
+## Response
+
+Returns an array of `MemoryResponse` objects.
+
+<ResponseField name="id" type="integer">
+  Memory identifier.
+</ResponseField>
+
+<ResponseField name="agent_id" type="integer">
+  Agent that formed the memory.
+</ResponseField>
+
+<ResponseField name="session_id" type="integer">
+  Session identifier.
+</ResponseField>
+
+<ResponseField name="strength" type="number">
+  Memory strength (`0.0`–`1.0`).
+</ResponseField>
+
+<ResponseField name="relevance_score" type="number">
+  Relevance score (`0.0`–`1.0`).
+</ResponseField>
+
+<ResponseField name="access_count" type="integer">
+  Number of times the memory has been accessed.
+</ResponseField>
+
+<ResponseField name="formed_at" type="integer">
+  Formation timestamp (nanoseconds since Unix epoch).
+</ResponseField>
+
+<ResponseField name="last_accessed" type="integer">
+  Last access timestamp.
+</ResponseField>
+
+<ResponseField name="context_hash" type="integer">
+  Context fingerprint.
+</ResponseField>
+
+<ResponseField name="context" type="EventContext">
+  Full context object. See [Types](/api-reference/types#eventcontext-structure).
+</ResponseField>
+
+<ResponseField name="outcome" type="string">
+  Episode outcome description.
+</ResponseField>
+
+<ResponseField name="memory_type" type="string">
+  One of: `"Episodic"`, `"Working"`, `"Semantic"`, `"Negative"`.
+</ResponseField>
+
+```json
+[
+  {
+    "id": 789,
+    "agent_id": 1,
+    "session_id": 5001,
+    "strength": 0.92,
+    "relevance_score": 0.88,
+    "access_count": 3,
+    "formed_at": 1738425600000000000,
+    "last_accessed": 1738512000000000000,
+    "context_hash": 12345678901234,
+    "context": { "..." : "..." },
+    "outcome": "Success",
+    "memory_type": "Episodic"
+  }
+]
+```

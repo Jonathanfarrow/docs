@@ -1,0 +1,183 @@
+---
+title: "Event types reference"
+sidebarTitle: "Event types"
+description: "Complete reference for all six EventType variants — Action, Observation, Cognitive, Communication, Learning, and Context."
+---
+
+The `event_type` field on every event uses a tagged enum. **Exactly one** variant must be provided.
+
+---
+
+## Action
+
+Use when the agent *does* something — calls an API, books a seat, sends an email.
+
+```json
+{
+  "Action": {
+    "action_name": "book_movie_ticket",
+    "parameters": { "movie": "Interstellar", "seat": "H12" },
+    "outcome": { "Success": { "result": { "confirmation_id": "CONF-123" } } },
+    "duration_ns": 1500000
+  }
+}
+```
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `action_name` | `String` | ✅ Yes | Name of the action executed |
+| `parameters` | `JSON` | ✅ Yes | Action parameters (any JSON, can be `null`) |
+| `outcome` | `ActionOutcome` | ✅ Yes | Result of the action |
+| `duration_ns` | `u64` | ✅ Yes | Execution duration in nanoseconds |
+
+### ActionOutcome variants
+
+<Tabs>
+  <Tab title="Success">
+```json
+{ "Success": { "result": { "confirmation_id": "CONF-123" } } }
+```
+  </Tab>
+  <Tab title="Failure">
+```json
+{ "Failure": { "error": "Seat unavailable", "error_code": 409 } }
+```
+  </Tab>
+  <Tab title="Partial">
+```json
+{ "Partial": { "result": { "booked": true }, "issues": ["Payment pending"] } }
+```
+  </Tab>
+</Tabs>
+
+---
+
+## Observation
+
+Use when the agent receives external data that isn't a direct message — price updates, sensor readings, API responses.
+
+```json
+{
+  "Observation": {
+    "observation_type": "ticket_availability",
+    "data": { "remaining_seats": 5 },
+    "confidence": 1.0,
+    "source": "Theater-API"
+  }
+}
+```
+
+| Field | Type | Required | Range | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `observation_type` | `String` | ✅ Yes | — | Type of observation |
+| `data` | `JSON` | ✅ Yes | — | Observed data (any JSON) |
+| `confidence` | `f32` | ✅ Yes | `0.0`–`1.0` | Confidence in observation |
+| `source` | `String` | ✅ Yes | — | Data source identifier |
+
+---
+
+## Cognitive
+
+Use to log the agent's internal "thinking" process. This is crucial for **strategy extraction**.
+
+```json
+{
+  "Cognitive": {
+    "process_type": "Reasoning",
+    "input": { "user_query": "I want a quiet seat" },
+    "output": { "decision": "Select back row" },
+    "reasoning_trace": [
+      "User requested quiet environment",
+      "Back rows have less foot traffic",
+      "Checking availability for row Z"
+    ]
+  }
+}
+```
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `process_type` | `CognitiveType` | ✅ Yes | Type of cognitive process |
+| `input` | `JSON` | ✅ Yes | Input to cognitive process |
+| `output` | `JSON` | ✅ Yes | Output from process |
+| `reasoning_trace` | `String[]` | ✅ Yes | Reasoning steps (can be `[]`) |
+
+### CognitiveType values
+
+| Value | Description |
+| :--- | :--- |
+| `"GoalFormation"` | Forming a new goal |
+| `"Planning"` | Creating a plan |
+| `"Reasoning"` | General reasoning |
+| `"MemoryRetrieval"` | Retrieving from memory |
+| `"LearningUpdate"` | Updating learned knowledge |
+
+---
+
+## Communication
+
+Use for every message between the user and the agent.
+
+```json
+{
+  "Communication": {
+    "message_type": "user_message",
+    "sender": 0,
+    "recipient": 1,
+    "content": { "text": "I'd like to book a ticket for tonight." }
+  }
+}
+```
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `message_type` | `String` | ✅ Yes | Type of message (e.g., `"user_message"`) |
+| `sender` | `u64` | ✅ Yes | Sender agent ID |
+| `recipient` | `u64` | ✅ Yes | Recipient agent ID |
+| `content` | `JSON` | ✅ Yes | Message content (any JSON) |
+
+---
+
+## Learning
+
+Use to log memory and strategy lifecycle events.
+
+```json
+{
+  "Learning": {
+    "event": { "MemoryRetrieved": { "query_id": "q-123", "memory_ids": [1, 2, 3] } }
+  }
+}
+```
+
+### LearningEvent variants
+
+| Variant | Fields | Description |
+| :--- | :--- | :--- |
+| `MemoryRetrieved` | `query_id: String`, `memory_ids: u64[]` | Memories retrieved for a query |
+| `MemoryUsed` | `query_id: String`, `memory_id: u64` | A specific memory was used |
+| `StrategyServed` | `query_id: String`, `strategy_ids: u64[]` | Strategies served for a query |
+| `StrategyUsed` | `query_id: String`, `strategy_id: u64` | A specific strategy was used |
+| `Outcome` | `query_id: String`, `success: bool` | Final outcome of the learning cycle |
+
+---
+
+## Context
+
+Use for raw text content intended for claim extraction.
+
+```json
+{
+  "Context": {
+    "text": "The user mentioned they prefer IMAX screenings and aisle seats.",
+    "context_type": "conversation",
+    "language": "en"
+  }
+}
+```
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `text` | `String` | ✅ Yes | Raw text content |
+| `context_type` | `String` | ✅ Yes | Type: `"conversation"`, `"document"`, `"transcript"` |
+| `language` | `String \| null` | No | Language hint (e.g., `"en"`, `"es"`) |

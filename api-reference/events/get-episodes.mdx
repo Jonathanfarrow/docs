@@ -1,0 +1,48 @@
+---
+title: "Get episodes"
+sidebarTitle: "GET Episodes"
+description: "Retrieve completed episodes detected by the system."
+api: "GET /api/episodes"
+---
+
+## Query parameters
+
+<ParamField query="limit" type="integer" default="10">
+  Maximum number of episodes to return. Max: `1000`.
+</ParamField>
+
+## Response
+
+Returns an array of `EpisodeResponse` objects.
+
+<ResponseField name="id" type="integer">
+  Episode identifier.
+</ResponseField>
+
+<ResponseField name="agent_id" type="integer">
+  Agent that executed the episode.
+</ResponseField>
+
+<ResponseField name="event_count" type="integer">
+  Number of events in the episode.
+</ResponseField>
+
+<ResponseField name="significance" type="number">
+  Significance score (`0.0`–`1.0`).
+</ResponseField>
+
+<ResponseField name="outcome" type="string | null">
+  Episode outcome (e.g., `"Success"`, `"Failure"`).
+</ResponseField>
+
+```json
+[
+  {
+    "id": 1,
+    "agent_id": 1,
+    "event_count": 8,
+    "significance": 0.85,
+    "outcome": "Success"
+  }
+]
+```

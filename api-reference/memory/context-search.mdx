@@ -1,0 +1,81 @@
+---
+title: "Search by context"
+sidebarTitle: "POST Context search"
+description: "Find memories relevant to the current task by matching goals and environment against past episodes."
+api: "POST /api/memories/context"
+---
+
+This is the most powerful memory retrieval method. It answers: *"What did we do last time we were in this exact situation?"*
+
+## Request body
+
+<ParamField body="context" type="EventContext" required>
+  Context to match against. See [Types](/api-reference/types#eventcontext-structure).
+</ParamField>
+
+<ParamField body="limit" type="integer" default="10">
+  Maximum number of results.
+</ParamField>
+
+<ParamField body="min_similarity" type="number" default="0.6">
+  Minimum similarity threshold (`0.0`–`1.0`). Set to `null` to use the default.
+</ParamField>
+
+<ParamField body="agent_id" type="integer">
+  Filter by agent. Set to `null` to search across all agents.
+</ParamField>
+
+<ParamField body="session_id" type="integer">
+  Filter by session. Set to `null` to search across all sessions.
+</ParamField>
+
+### Example request
+
+```json
+{
+  "context": {
+    "active_goals": [
+      {
+        "id": 101,
+        "description": "book_movie",
+        "priority": 0.9,
+        "progress": 0.5,
+        "deadline": null,
+        "subgoals": []
+      }
+    ],
+    "environment": {
+      "variables": { "user_id": "user_99" },
+      "spatial": null,
+      "temporal": {
+        "time_of_day": null,
+        "deadlines": [],
+        "patterns": []
+      }
+    },
+    "resources": {
+      "computational": {
+        "cpu_percent": 50.0,
+        "memory_bytes": 1024000,
+        "storage_bytes": 1024000000,
+        "network_bandwidth": 1000
+      },
+      "external": {}
+    },
+    "fingerprint": 0,
+    "embeddings": null
+  },
+  "limit": 5,
+  "min_similarity": 0.8,
+  "agent_id": null,
+  "session_id": null
+}
+```
+
+## Response
+
+Returns an array of `MemoryResponse` objects (same schema as [Get agent memories](/api-reference/memory/get-agent-memories)).
+
+<Tip>
+  The system uses a **context fingerprint** (a hash of the context) to find near-identical situations instantly. Always query by context and goal — this ensures your agent doesn't get confused by history from a different task.
+</Tip>

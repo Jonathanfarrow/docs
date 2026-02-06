@@ -1,0 +1,31 @@
+---
+title: "Process embeddings"
+sidebarTitle: "POST Process embeddings"
+description: "Manually trigger embedding generation for pending claims."
+api: "POST /api/embeddings/process"
+---
+
+Manually trigger embedding generation for claims that haven't been embedded yet. This is useful after bulk event ingestion.
+
+## Query parameters
+
+<ParamField query="limit" type="integer" default="10">
+  Batch size — number of claims to process in this request.
+</ParamField>
+
+## Response
+
+<ResponseField name="claims_processed" type="integer">
+  Number of claims that had embeddings generated.
+</ResponseField>
+
+<ResponseField name="success" type="boolean">
+  Whether the processing succeeded.
+</ResponseField>
+
+```json
+{
+  "claims_processed": 10,
+  "success": true
+}
+```

@@ -1,0 +1,63 @@
+---
+title: "Search claims"
+sidebarTitle: "POST Search claims"
+description: "Semantic search over extracted claims — find soft facts like user preferences and intent."
+api: "POST /api/claims/search"
+---
+
+Use this endpoint for fuzzy, concept-based queries like *"What are the user's favorite genres?"* or *"Has the user complained before?"*
+
+## Request body
+
+<ParamField body="query_text" type="string" required>
+  Natural language query. Keep it conversational — don't include IDs.
+</ParamField>
+
+<ParamField body="top_k" type="integer" default="10">
+  Number of results to return.
+</ParamField>
+
+<ParamField body="min_similarity" type="number" default="0.7">
+  Minimum similarity threshold (`0.0`–`1.0`).
+</ParamField>
+
+### Example request
+
+```json
+{
+  "query_text": "What are the user's favorite genres?",
+  "top_k": 3,
+  "min_similarity": 0.7
+}
+```
+
+## Response
+
+Returns an array of `ClaimResponse` objects with the `similarity` field populated.
+
+```json
+[
+  {
+    "claim_id": 42,
+    "claim_text": "User prefers Sci-Fi movies",
+    "confidence": 0.92,
+    "source_event_id": 123456789012345678901234567890,
+    "similarity": 0.89,
+    "evidence_spans": [
+      {
+        "start_offset": 15,
+        "end_offset": 45,
+        "text_snippet": "I really love Sci-Fi movies"
+      }
+    ],
+    "support_count": 3,
+    "status": "Active",
+    "created_at": 1738425600000000000,
+    "last_accessed": 1738512000000000000
+  }
+]
+```
+
+<Tip>
+  Keep the `query_text` natural. Don't include IDs in the string — filter the results in your application code instead.
+</Tip>

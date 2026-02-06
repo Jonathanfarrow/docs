@@ -1,0 +1,54 @@
+---
+title: "Analytics"
+sidebarTitle: "GET Analytics"
+description: "Advanced graph analytics — connected components, clustering, modularity, and learning metrics."
+api: "GET /api/analytics"
+---
+
+## Response
+
+<ResponseField name="node_count" type="integer">Total nodes in graph.</ResponseField>
+<ResponseField name="edge_count" type="integer">Total edges in graph.</ResponseField>
+<ResponseField name="connected_components" type="integer">Number of connected components.</ResponseField>
+<ResponseField name="largest_component_size" type="integer">Size of the largest component.</ResponseField>
+<ResponseField name="average_path_length" type="number">Average shortest path length.</ResponseField>
+<ResponseField name="diameter" type="integer">Graph diameter.</ResponseField>
+<ResponseField name="clustering_coefficient" type="number">Global clustering coefficient.</ResponseField>
+<ResponseField name="average_clustering" type="number">Average local clustering.</ResponseField>
+<ResponseField name="modularity" type="number">Modularity score.</ResponseField>
+<ResponseField name="community_count" type="integer">Number of communities detected.</ResponseField>
+<ResponseField name="learning_metrics" type="LearningMetricsResponse">Learning-specific metrics.</ResponseField>
+
+### LearningMetricsResponse
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `total_events` | `usize` | Total events processed |
+| `unique_contexts` | `usize` | Number of unique contexts |
+| `learned_patterns` | `usize` | Number of learned patterns |
+| `strong_memories` | `usize` | Number of strong memories |
+| `overall_success_rate` | `f32` | Overall success rate (`0.0`–`1.0`) |
+| `average_edge_weight` | `f32` | Average edge weight |
+
+```json
+{
+  "node_count": 15420,
+  "edge_count": 32801,
+  "connected_components": 5,
+  "largest_component_size": 14200,
+  "average_path_length": 3.2,
+  "diameter": 8,
+  "clustering_coefficient": 0.45,
+  "average_clustering": 0.52,
+  "modularity": 0.68,
+  "community_count": 12,
+  "learning_metrics": {
+    "total_events": 15420,
+    "unique_contexts": 320,
+    "learned_patterns": 45,
+    "strong_memories": 120,
+    "overall_success_rate": 0.82,
+    "average_edge_weight": 0.65
+  }
+}
+```

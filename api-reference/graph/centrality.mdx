@@ -1,0 +1,32 @@
+---
+title: "Centrality"
+sidebarTitle: "GET Centrality"
+description: "Retrieve node centrality scores — importance ranking across multiple metrics."
+api: "GET /api/centrality"
+---
+
+## Response
+
+Returns an array of `CentralityScoresResponse` objects.
+
+<ResponseField name="node_id" type="integer">Node identifier.</ResponseField>
+<ResponseField name="degree" type="number">Degree centrality.</ResponseField>
+<ResponseField name="betweenness" type="number">Betweenness centrality.</ResponseField>
+<ResponseField name="closeness" type="number">Closeness centrality.</ResponseField>
+<ResponseField name="eigenvector" type="number">Eigenvector centrality.</ResponseField>
+<ResponseField name="pagerank" type="number">PageRank score.</ResponseField>
+<ResponseField name="combined" type="number">Combined centrality score.</ResponseField>
+
+```json
+[
+  {
+    "node_id": 42,
+    "degree": 0.85,
+    "betweenness": 0.72,
+    "closeness": 0.68,
+    "eigenvector": 0.91,
+    "pagerank": 0.78,
+    "combined": 0.79
+  }
+]
+```

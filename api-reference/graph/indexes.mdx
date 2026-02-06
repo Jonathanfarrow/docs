@@ -1,0 +1,40 @@
+---
+title: "Index stats"
+sidebarTitle: "GET Indexes"
+description: "Retrieve statistics on property indexes — hits, misses, and query counts."
+api: "GET /api/indexes"
+---
+
+## Response
+
+Returns a map of index name to `IndexStatsResponse`.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `insert_count` | `u64` | Number of insertions |
+| `query_count` | `u64` | Number of queries |
+| `range_query_count` | `u64` | Number of range queries |
+| `hit_count` | `u64` | Number of cache hits |
+| `miss_count` | `u64` | Number of cache misses |
+| `last_accessed` | `u64` | Last access timestamp |
+
+```json
+{
+  "agent_type_index": {
+    "insert_count": 5000,
+    "query_count": 12000,
+    "range_query_count": 200,
+    "hit_count": 11500,
+    "miss_count": 500,
+    "last_accessed": 1738512000000000000
+  },
+  "session_id_index": {
+    "insert_count": 3000,
+    "query_count": 8000,
+    "range_query_count": 100,
+    "hit_count": 7800,
+    "miss_count": 200,
+    "last_accessed": 1738512000000000000
+  }
+}
+```

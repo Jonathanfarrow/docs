@@ -1,97 +1,58 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "EventGraphDB"
+sidebarTitle: "Introduction"
+description: "The graph-native database built for agentic AI workflows. Store events, form memories, extract knowledge, and learn strategies — automatically."
 ---
 
-## Setting up
+EventGraphDB is a purpose-built database for **agentic workflows**. Unlike traditional databases, it understands the *intent* (Goals) and *context* of every interaction your AI agents perform.
 
-Get your documentation site up and running in minutes.
+Every event you log is automatically woven into a knowledge graph that powers long-term memory, episode detection, claim extraction, and strategy learning.
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Core concepts" icon="lightbulb" href="/concepts">
+    Understand Events, Episodes, Goals, Memory, and Strategies.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get up and running in under 5 minutes.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="TypeScript SDK" icon="cube" href="/sdk/installation">
+    Install the SDK and start logging events immediately.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="API Reference" icon="square-terminal" href="/api-reference/introduction">
+    Explore every endpoint with full request and response schemas.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## How it works
 
-Everything you need to create world-class documentation.
+<Steps>
+  <Step title="Log events">
+    Send structured events — actions, observations, messages, reasoning — to the `POST /api/events` endpoint or via the SDK.
+  </Step>
+  <Step title="Automatic graph construction">
+    EventGraphDB builds a knowledge graph in real time: nodes for events, goals, actions, and contexts — connected by typed edges.
+  </Step>
+  <Step title="Episode detection">
+    Events sharing the same goal are grouped into **Episodes**. When a goal reaches `progress: 1.0`, the episode is completed.
+  </Step>
+  <Step title="Memory & strategy extraction">
+    Completed episodes become searchable **Memories**. Successful patterns are extracted as reusable **Strategies**.
+  </Step>
+  <Step title="Query & recall">
+    Retrieve memories by context, search claims semantically, or ask the Policy Guide "What should I do next?"
+  </Step>
+</Steps>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+## Choose your path
 
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<CardGroup cols={3}>
+  <Card title="I want to build" icon="hammer" href="/quickstart">
+    Jump straight to the quickstart guide.
+  </Card>
+  <Card title="I want to understand" icon="book" href="/concepts">
+    Read the core concepts first.
+  </Card>
+  <Card title="I want to explore" icon="map" href="/api-reference/introduction">
+    Browse the full API surface.
+  </Card>
+</CardGroup>
