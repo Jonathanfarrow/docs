@@ -18,7 +18,8 @@
             "pages": [
               "index",
               "concepts",
-              "quickstart"
+              "quickstart",
+              "authentication"
             ]
           },
           {
@@ -35,6 +36,7 @@
             "group": "Guides",
             "pages": [
               "guides/building-a-chat-agent",
+              "guides/use-case-recipes",
               "guides/query-selection",
               "guides/integration-examples"
             ]

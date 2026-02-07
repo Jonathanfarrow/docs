@@ -1,0 +1,624 @@
+---
+title: "Use case recipes"
+sidebarTitle: "Use case recipes"
+description: "Ready-to-adapt patterns for customer support bots, research agents, e-commerce assistants, IoT monitoring, and more — all powered by minns-sdk."
+---
+
+Each recipe below is a self-contained pattern you can adapt to your domain. They all follow the same agent architecture: **Perceive → Think → Act → Remember**.
+
+Every recipe assumes you have a configured client:
+
+```typescript
+import { createClient } from 'minns-sdk';
+
+const client = createClient({
+  baseUrl: "https://minns.ai/api/",
+  apiKey: process.env.MINNS_API_KEY,
+  autoBatch: true,
+  batchInterval: 100,
+  batchMaxSize: 20,
+});
+```
+
+---
+
+## 1. Customer support agent
+
+A support agent that remembers past tickets, learns resolution strategies, and knows the customer's history before they explain anything.
+
+### Why Minns Memory Layer helps
+
+- **Claims** capture customer preferences and past issues ("User is on the Enterprise plan", "User had a billing dispute in January")
+- **Context memories** recall previous support sessions for the same problem type
+- **Strategies** encode proven resolution workflows so new agents follow best practices
+
+### Implementation
+
+```typescript
+const AGENT_TYPE = "support-agent";
+
+async function handleSupportTicket(customerId: string, message: string, sessionId: number) {
+  // --- PERCEIVE: Gather everything we know ---
+  const [claims, memories, strategies] = await Promise.all([
+    // What do we know about this customer?
+    client.searchClaims({
+      query_text: `Customer history, preferences, and past issues for ${customerId}`,
+      top_k: 5,
+      min_similarity: 0.6,
+    }),
+
+    // Have we handled this type of issue before?
+    client.getContextMemories(
+      {
+        active_goals: [
+          { id: 301, description: "resolve_support_ticket", priority: 0.9, progress: 0.0, subgoals: [] },
+        ],
+        environment: {
+          variables: { customer_id: customerId },
+          temporal: { deadlines: [], patterns: [] },
+        },
+        resources: {
+          computational: { cpu_percent: 10, memory_bytes: 1024, storage_bytes: 1024, network_bandwidth: 100 },
+          external: {},
+        },
+      },
+      { limit: 3, min_similarity: 0.5 }
+    ),
+
+    // What resolution strategies have worked before?
+    client.getSimilarStrategies({
+      goal_ids: [301],
+      tool_names: ["lookup_account", "issue_refund", "escalate_ticket"],
+      result_types: [],
+      limit: 2,
+      min_score: 0.6,
+    }),
+  ]);
+
+  // Build context for the LLM
+  const knownFacts = claims.map(c => `- ${c.claim_text}`).join("\n") || "No prior history.";
+  const pastResolutions = memories.map(m => `- ${m.outcome} (${m.memory_type})`).join("\n") || "First contact.";
+  const playbook = strategies.map(s => `- ${s.name}: ${s.action_hint}`).join("\n") || "No playbook yet.";
+
+  // --- THINK: Pass context to LLM (your LLM call here) ---
+  const response = await generateSupportResponse(message, knownFacts, pastResolutions, playbook);
+
+  // --- REMEMBER: Log the interaction ---
+  await client.event(AGENT_TYPE, { agentId: 1, sessionId })
+    .context(message, "conversation")
+    .goal("resolve_support_ticket", 5, 0.2)
+    .state({ customer_id: customerId, channel: "chat" })
+    .enqueue();
+
+  return response;
+}
+```
+
+### Closing a ticket
+
+When the issue is resolved, mark the goal as complete so the episode gets stored as a long-term memory:
+
+```typescript
+async function closeTicket(customerId: string, sessionId: number, resolution: string) {
+  await client.event(AGENT_TYPE, { agentId: 1, sessionId })
+    .action("close_ticket", { customer_id: customerId, resolution })
+    .outcome({ resolved: true, satisfaction: "positive" })
+    .goal("resolve_support_ticket", 5, 1.0)  // Episode complete
+    .state({ customer_id: customerId })
+    .send();
+}
+```
+
+<Tip>
+  Log both successful and failed resolutions. Failed episodes become **Negative memories** that help the agent avoid repeating mistakes.
+</Tip>
+
+---
+
+## 2. Research assistant
+
+An agent that helps researchers find, summarize, and organize information — building up a knowledge base over time.
+
+### Why Minns Memory Layer helps
+
+- **Claims** accumulate extracted facts across many research sessions
+- **Context memory** recalls what the researcher was working on last time
+- **Strategies** learn efficient search patterns (e.g., "When researching X, start with source Y")
+
+### Implementation
+
+```typescript
+const AGENT_TYPE = "research-agent";
+
+async function researchTopic(researcherId: string, query: string, sessionId: number) {
+  // What facts have we already gathered on this topic?
+  const existingKnowledge = await client.searchClaims({
+    query_text: query,
+    top_k: 10,
+    min_similarity: 0.5,
+  });
+
+  // What strategies worked for similar research tasks?
+  const researchStrategies = await client.getSimilarStrategies({
+    goal_ids: [501],
+    tool_names: ["search_papers", "summarize_document", "extract_entities"],
+    result_types: [],
+    limit: 3,
+    min_score: 0.5,
+  });
+
+  // Log the search action
+  const searchStart = Date.now();
+  const results = await searchAcademicPapers(query); // Your search API
+  const searchDuration = (Date.now() - searchStart) * 1_000_000; // Convert to nanoseconds
+
+  await client.event(AGENT_TYPE, { agentId: 2, sessionId })
+    .action("search_papers", { query, source: "arxiv" })
+    .outcome({ results_found: results.length, top_result: results[0]?.title })
+    .goal("research_topic", 4, 0.3)
+    .state({ researcher_id: researcherId })
+    .send();
+
+  // Log each finding as a Context event for claim extraction
+  for (const paper of results.slice(0, 3)) {
+    await client.event(AGENT_TYPE, { agentId: 2, sessionId })
+      .context(`${paper.title}: ${paper.abstract}`, "document")
+      .goal("research_topic", 4, 0.5)
+      .state({ researcher_id: researcherId, paper_id: paper.id })
+      .enqueue();
+  }
+
+  return {
+    existingKnowledge: existingKnowledge.map(c => c.claim_text),
+    newResults: results,
+    suggestedApproach: researchStrategies[0]?.action_hint || "Start with a broad search",
+  };
+}
+```
+
+### Building a knowledge base over time
+
+Each research session extracts claims from papers. Over time, the agent builds a rich knowledge graph:
+
+```typescript
+// After many sessions, query the accumulated knowledge
+const quantumFacts = await client.searchClaims({
+  query_text: "quantum computing error correction techniques",
+  top_k: 20,
+  min_similarity: 0.6,
+});
+
+// The agent now has a personal research database
+// spanning every paper it has ever processed
+console.log(`Found ${quantumFacts.length} accumulated facts on this topic`);
+```
+
+---
+
+## 3. E-commerce recommendation agent
+
+A shopping assistant that learns customer preferences, remembers browsing patterns, and gets better at recommendations with every interaction.
+
+### Why Minns Memory Layer helps
+
+- **Claims** capture preferences: "User prefers organic products", "User's budget is under $50"
+- **Context memory** remembers past shopping sessions and abandoned carts
+- **Policy Guide** suggests the best next action based on conversion patterns
+
+### Implementation
+
+```typescript
+const AGENT_TYPE = "shop-agent";
+
+async function handleShoppingSession(
+  customerId: string,
+  message: string,
+  sessionId: number,
+  contextHash: number
+) {
+  // Retrieve customer profile from claims
+  const preferences = await client.searchClaims({
+    query_text: `Shopping preferences, budget, and style for customer`,
+    top_k: 5,
+    min_similarity: 0.6,
+  });
+
+  // Check past shopping behavior
+  const pastSessions = await client.getContextMemories(
+    {
+      active_goals: [
+        { id: 401, description: "purchase_product", priority: 0.8, progress: 0.0, subgoals: [] },
+      ],
+      environment: {
+        variables: { customer_id: customerId },
+        temporal: { deadlines: [], patterns: [] },
+      },
+      resources: {
+        computational: { cpu_percent: 10, memory_bytes: 1024, storage_bytes: 1024, network_bandwidth: 100 },
+        external: {},
+      },
+    },
+    { limit: 5 }
+  );
+
+  // Ask the Policy Guide: what action converts best right now?
+  const suggestions = await client.getActionSuggestions(contextHash, undefined, 3);
+
+  // Build personalized recommendations
+  const knownPrefs = preferences.map(c => c.claim_text);
+  const purchaseHistory = pastSessions.map(m => m.outcome);
+  const nextBestAction = suggestions[0];
+
+  // Log browsing behavior
+  await client.event(AGENT_TYPE, { agentId: 3, sessionId })
+    .context(message, "conversation")
+    .goal("purchase_product", 3, 0.1)
+    .state({ customer_id: customerId, page: "product_listing" })
+    .enqueue();
+
+  return {
+    preferences: knownPrefs,
+    history: purchaseHistory,
+    recommendation: nextBestAction?.action_name || "show_trending",
+    confidence: nextBestAction?.success_probability || 0,
+  };
+}
+```
+
+### Tracking the conversion funnel
+
+Log each step of the funnel so the Policy Guide learns what leads to purchases:
+
+```typescript
+async function logFunnelStep(
+  customerId: string,
+  sessionId: number,
+  step: "browse" | "add_to_cart" | "checkout" | "purchase",
+  data: Record<string, unknown>
+) {
+  const progressMap = { browse: 0.2, add_to_cart: 0.5, checkout: 0.8, purchase: 1.0 };
+
+  await client.event(AGENT_TYPE, { agentId: 3, sessionId })
+    .action(step, data)
+    .outcome({ completed: true })
+    .goal("purchase_product", 3, progressMap[step])
+    .state({ customer_id: customerId, funnel_step: step })
+    .enqueue();
+}
+
+// Example: customer adds item to cart
+await logFunnelStep("cust_42", sessionId, "add_to_cart", {
+  product_id: "SKU-789",
+  product_name: "Organic Cotton T-Shirt",
+  price: 29.99,
+});
+```
+
+<Info>
+  As the agent logs more funnels, the Policy Guide learns patterns like: *"After `add_to_cart`, offering free shipping has a 78% conversion rate."*
+</Info>
+
+---
+
+## 4. IoT monitoring agent
+
+An agent that monitors sensor data, detects anomalies, remembers past incidents, and learns diagnostic strategies.
+
+### Why Minns Memory Layer helps
+
+- **Observation events** log sensor readings with confidence scores
+- **Context memory** recalls past incidents with the same signature
+- **Strategies** encode proven diagnostic and remediation workflows
+
+### Implementation
+
+```typescript
+const AGENT_TYPE = "iot-monitor";
+
+async function processSensorReading(
+  deviceId: string,
+  reading: { temperature: number; pressure: number; vibration: number },
+  sessionId: number
+) {
+  // Log the raw observation
+  await client.event(AGENT_TYPE, { agentId: 10, sessionId })
+    .observation("sensor_reading", reading, {
+      confidence: 0.95,
+      source: `device-${deviceId}`,
+    })
+    .state({ device_id: deviceId, zone: "factory-floor-A" })
+    .enqueue();
+
+  // Detect anomaly
+  const isAnomaly = reading.temperature > 85 || reading.vibration > 0.8;
+
+  if (isAnomaly) {
+    // What happened last time this device had an anomaly?
+    const pastIncidents = await client.getContextMemories(
+      {
+        active_goals: [
+          { id: 601, description: "diagnose_anomaly", priority: 1.0, progress: 0.0, subgoals: [] },
+        ],
+        environment: {
+          variables: { device_id: deviceId, anomaly_type: "overtemp" },
+          temporal: { deadlines: [], patterns: [] },
+        },
+        resources: {
+          computational: { cpu_percent: 10, memory_bytes: 1024, storage_bytes: 1024, network_bandwidth: 100 },
+          external: {},
+        },
+      },
+      { limit: 5, min_similarity: 0.6 }
+    );
+
+    // What diagnostic strategies have worked?
+    const diagnosticStrategies = await client.getSimilarStrategies({
+      goal_ids: [601],
+      tool_names: ["check_coolant", "reduce_load", "restart_device"],
+      result_types: [],
+      limit: 3,
+      min_score: 0.5,
+    });
+
+    // Log the anomaly detection as a cognitive event
+    await client.event(AGENT_TYPE, { agentId: 10, sessionId })
+      .action("detect_anomaly", {
+        device_id: deviceId,
+        reading,
+        threshold_exceeded: reading.temperature > 85 ? "temperature" : "vibration",
+      })
+      .outcome({
+        anomaly_detected: true,
+        severity: reading.temperature > 95 ? "critical" : "warning",
+        past_incidents: pastIncidents.length,
+      })
+      .goal("diagnose_anomaly", 5, 0.2)
+      .state({ device_id: deviceId })
+      .send();
+
+    return {
+      alert: true,
+      severity: reading.temperature > 95 ? "critical" : "warning",
+      pastIncidents: pastIncidents.map(m => m.outcome),
+      recommendedAction: diagnosticStrategies[0]?.action_hint || "Inspect device manually",
+    };
+  }
+
+  return { alert: false };
+}
+```
+
+### Closing an incident
+
+When the issue is resolved, log the resolution so the agent learns from it:
+
+```typescript
+async function resolveIncident(
+  deviceId: string,
+  sessionId: number,
+  resolution: string,
+  rootCause: string
+) {
+  // Log the resolution as a Context event for claim extraction
+  await client.event(AGENT_TYPE, { agentId: 10, sessionId })
+    .context(
+      `Device ${deviceId} anomaly resolved. Root cause: ${rootCause}. Resolution: ${resolution}`,
+      "document"
+    )
+    .goal("diagnose_anomaly", 5, 1.0)
+    .state({ device_id: deviceId })
+    .send();
+}
+
+// Example: coolant pump was failing
+await resolveIncident("sensor-42", sessionId, "Replaced coolant pump", "Coolant flow rate dropped below threshold");
+```
+
+<Tip>
+  The context string gets claim-extracted automatically. The next time any device has a coolant issue, `searchClaims("coolant problems")` returns the root cause and resolution from this incident.
+</Tip>
+
+---
+
+## 5. Content moderation agent
+
+An agent that reviews user-generated content, learns from past moderation decisions, and adapts its policies over time.
+
+### Why Minns Memory Layer helps
+
+- **Claims** accumulate moderation rules and edge cases learned from past decisions
+- **Strategies** encode moderation workflows (e.g., "Flag, review, then act")
+- **Context memory** remembers repeat offenders and their history
+
+### Implementation
+
+```typescript
+const AGENT_TYPE = "moderation-agent";
+
+async function moderateContent(
+  contentId: string,
+  content: string,
+  authorId: string,
+  sessionId: number
+) {
+  // Check if this author has a history
+  const authorHistory = await client.searchClaims({
+    query_text: `Moderation history and violations for author ${authorId}`,
+    top_k: 5,
+    min_similarity: 0.5,
+  });
+
+  // What moderation strategies have worked?
+  const moderationStrategies = await client.getSimilarStrategies({
+    goal_ids: [701],
+    tool_names: ["flag_content", "warn_user", "ban_user", "approve_content"],
+    result_types: [],
+    limit: 2,
+    min_score: 0.6,
+  });
+
+  // Log the content for analysis and claim extraction
+  await client.event(AGENT_TYPE, { agentId: 5, sessionId })
+    .context(content, "document")
+    .goal("moderate_content", 4, 0.3)
+    .state({ content_id: contentId, author_id: authorId })
+    .enqueue();
+
+  // Run your moderation logic (LLM-based, rule-based, or hybrid)
+  const decision = await runModerationPipeline(content, authorHistory, moderationStrategies);
+
+  // Log the decision
+  await client.event(AGENT_TYPE, { agentId: 5, sessionId })
+    .action("moderation_decision", {
+      content_id: contentId,
+      author_id: authorId,
+      decision: decision.action,
+      reason: decision.reason,
+    })
+    .outcome({
+      action_taken: decision.action,
+      confidence: decision.confidence,
+      prior_violations: authorHistory.length,
+    })
+    .goal("moderate_content", 4, 1.0)
+    .state({ content_id: contentId, author_id: authorId })
+    .send();
+
+  return decision;
+}
+```
+
+---
+
+## 6. Onboarding assistant
+
+A guided onboarding agent that walks new users through setup, remembers where they left off, and adapts the flow based on what's worked for similar users.
+
+### Why Minns Memory Layer helps
+
+- **Context memory** picks up exactly where the user left off, even across sessions
+- **Claims** track what the user has completed: "User connected GitHub", "User skipped billing setup"
+- **Policy Guide** recommends the optimal next step based on what's worked for other users
+
+### Implementation
+
+```typescript
+const AGENT_TYPE = "onboarding-agent";
+
+const ONBOARDING_STEPS = [
+  { id: 1, name: "create_account", weight: 0.1 },
+  { id: 2, name: "connect_integration", weight: 0.3 },
+  { id: 3, name: "configure_project", weight: 0.5 },
+  { id: 4, name: "send_first_event", weight: 0.7 },
+  { id: 5, name: "verify_data", weight: 0.9 },
+  { id: 6, name: "invite_team", weight: 1.0 },
+];
+
+async function getOnboardingState(userId: string, sessionId: number) {
+  // What has this user already done?
+  const completedSteps = await client.searchClaims({
+    query_text: `Onboarding steps completed by user`,
+    top_k: 10,
+    min_similarity: 0.5,
+  });
+
+  // Where did we leave off?
+  const lastSession = await client.getContextMemories(
+    {
+      active_goals: [
+        { id: 801, description: "complete_onboarding", priority: 0.8, progress: 0.0, subgoals: [] },
+      ],
+      environment: {
+        variables: { user_id: userId },
+        temporal: { deadlines: [], patterns: [] },
+      },
+      resources: {
+        computational: { cpu_percent: 10, memory_bytes: 1024, storage_bytes: 1024, network_bandwidth: 100 },
+        external: {},
+      },
+    },
+    { limit: 1 }
+  );
+
+  // What step converts best for users at this stage?
+  const suggestions = await client.getActionSuggestions(
+    lastSession[0]?.context_hash || 0,
+    undefined,
+    1
+  );
+
+  const completed = completedSteps.map(c => c.claim_text);
+  const nextStep = suggestions[0]?.action_name
+    || ONBOARDING_STEPS.find(s => !completed.some(c => c.includes(s.name)))?.name
+    || "invite_team";
+
+  return { completed, nextStep, lastOutcome: lastSession[0]?.outcome };
+}
+
+async function completeOnboardingStep(
+  userId: string,
+  sessionId: number,
+  stepName: string,
+  data: Record<string, unknown>
+) {
+  const step = ONBOARDING_STEPS.find(s => s.name === stepName);
+  if (!step) throw new Error(`Unknown step: ${stepName}`);
+
+  // Log completion
+  await client.event(AGENT_TYPE, { agentId: 6, sessionId })
+    .action(stepName, data)
+    .outcome({ completed: true, step_number: step.id })
+    .goal("complete_onboarding", 3, step.weight)
+    .state({ user_id: userId })
+    .send();
+
+  // Log a claim-friendly description
+  await client.event(AGENT_TYPE, { agentId: 6, sessionId })
+    .context(`User completed onboarding step: ${stepName}`, "document")
+    .goal("complete_onboarding", 3, step.weight)
+    .state({ user_id: userId })
+    .enqueue();
+}
+```
+
+<Info>
+  When `step.weight` reaches `1.0` (the "invite_team" step), the episode completes and becomes a long-term memory. The Policy Guide uses successful onboarding sessions to recommend the optimal step order for new users.
+</Info>
+
+---
+
+## Patterns across all recipes
+
+Every recipe above follows the same principles:
+
+| Pattern | What it does | SDK method |
+| :--- | :--- | :--- |
+| **Parallel retrieval** | Fetch claims + memories + strategies in one `Promise.all` | `searchClaims`, `getContextMemories`, `getSimilarStrategies` |
+| **Context logging** | Log natural language for claim extraction | `client.event().context().enqueue()` |
+| **Action + outcome** | Log what the agent did and what happened | `client.event().action().outcome().send()` |
+| **Goal progress** | Track progress from `0.0` to `1.0` to trigger episode completion | `.goal(description, priority, progress)` |
+| **State injection** | Attach metadata for filtering and graph queries | `.state({ key: value })` |
+| **Flush on shutdown** | Ensure all queued events are sent | `client.flush()` |
+
+<Warning>
+  Always call `await client.flush()` before your process exits. This applies to every recipe above — wrap your agent loop in a `try/finally` block.
+</Warning>
+
+---
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Build a chat agent" icon="robot" href="/guides/building-a-chat-agent">
+    Full walkthrough: from intent model to production agent.
+  </Card>
+  <Card title="Query selection" icon="magnifying-glass" href="/guides/query-selection">
+    Learn which search to use for every retrieval pattern.
+  </Card>
+  <Card title="Event builder" icon="wrench" href="/sdk/event-builder">
+    Full reference for the fluent event builder API.
+  </Card>
+  <Card title="API Reference" icon="square-terminal" href="/api-reference/introduction">
+    Explore every endpoint in detail.
+  </Card>
+</CardGroup>

@@ -5,7 +5,7 @@ description: "Get Minns Memory Layer running and log your first event in under 5
 
 ## Prerequisites
 
-- **Minns Memory Layer server** running locally or remotely (default: `https://your-instance.minns.ai`)
+- A **Minns API key** — create one on your [project page](https://minns.ai) (see [Authentication](/authentication))
 - **Node.js** 18 or higher
 - **npm** or your preferred package manager
 
@@ -31,7 +31,8 @@ pnpm add minns-sdk
 import { createClient } from 'minns-sdk';
 
 const client = createClient({
-  baseUrl: "https://your-instance.minns.ai",
+  baseUrl: "https://minns.ai/api/",
+  apiKey: process.env.MINNS_API_KEY,
   defaultAsync: true,
   autoBatch: true,
   batchInterval: 100,

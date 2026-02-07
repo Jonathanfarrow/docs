@@ -10,7 +10,7 @@ description: "End-to-end examples showing how to integrate Minns Memory Layer in
 import { createClient } from 'minns-sdk';
 
 const client = createClient({
-  baseUrl: "https://your-instance.minns.ai",
+  baseUrl: "https://minns.ai/api/",
   defaultAsync: true,
   autoBatch: true,
   batchInterval: 100,
@@ -173,7 +173,7 @@ import { createClient } from 'minns-sdk';
 
 async function agentLoop(userId: string) {
   const client = createClient({
-    baseUrl: "https://your-instance.minns.ai",
+    baseUrl: "https://minns.ai/api/",
     autoBatch: true,
     batchInterval: 100,
     batchMaxSize: 20,

@@ -13,7 +13,7 @@
   },
   "servers": [
     {
-      "url": "https://your-instance.minns.ai",
+      "url": "https://minns.ai/api/",
       "description": "Your Minns Memory Layer instance"
     }
   ],
@@ -25,6 +25,7 @@
     { "name": "Graph", "description": "Graph structure, analytics, communities, and centrality" },
     { "name": "System", "description": "Health checks and system statistics" }
   ],
+  "security": [{ "bearerAuth": [] }],
   "paths": {
     "/api/events": {
       "post": {
@@ -723,6 +724,13 @@
     }
   },
   "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Your Minns API key. Include it as a Bearer token in the Authorization header."
+      }
+    },
     "schemas": {
       "Event": {
         "type": "object",

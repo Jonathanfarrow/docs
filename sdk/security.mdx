@@ -43,7 +43,7 @@ The local auto-batch queue has a configurable maximum depth (`maxQueueSize`, def
 
 ```typescript
 const client = createClient({
-  baseUrl: "https://your-instance.minns.ai",
+  baseUrl: "https://minns.ai/api/",
   autoBatch: true,
   maxQueueSize: 5000, // Increase for high-throughput agents
 });
@@ -64,7 +64,7 @@ Telemetry is enabled by default. To opt out:
 
 ```typescript
 const client = createClient({
-  baseUrl: "https://your-instance.minns.ai",
+  baseUrl: "https://minns.ai/api/",
   enableDefaultTelemetry: false,
 });
 ```

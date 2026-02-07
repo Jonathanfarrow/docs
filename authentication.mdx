@@ -1,0 +1,186 @@
+---
+title: "Authentication"
+sidebarTitle: "Authentication"
+description: "Authenticate with the Minns Memory Layer API using project API keys, and manage key rotation from the project page."
+---
+
+Every request to the Minns Memory Layer API must include a valid **API key**. Keys are scoped to a project and carry the permissions you assign on the project page.
+
+---
+
+## Getting your API key
+
+<Steps>
+  <Step title="Open the project page">
+    Navigate to your project dashboard at [minns.ai](https://minns.ai) and select the project you want to authenticate against.
+  </Step>
+  <Step title="Go to API Keys">
+    Click **Settings** → **API Keys**. You'll see your active keys and their creation dates.
+  </Step>
+  <Step title="Create a new key">
+    Click **Create Key**. Give it a descriptive name (e.g., `production-backend`, `staging-agent`) so you can identify it later. Copy the key immediately — it won't be shown again.
+  </Step>
+</Steps>
+
+<Warning>
+  Your API key is a secret. Never commit it to source control, embed it in client-side code, or share it in logs.
+</Warning>
+
+---
+
+## Using your API key
+
+Include the key in the `Authorization` header of every request:
+
+```bash
+curl -X GET https://minns.ai/api/api/health \
+  -H "Authorization: Bearer mk_live_abc123..."
+```
+
+### With the SDK
+
+Pass your API key when creating the client:
+
+```typescript
+import { createClient } from 'minns-sdk';
+
+const client = createClient({
+  baseUrl: "https://minns.ai/api/",
+  apiKey: process.env.MINNS_API_KEY,  // Always use environment variables
+  autoBatch: true,
+  batchInterval: 100,
+  batchMaxSize: 20,
+});
+```
+
+The SDK automatically attaches the `Authorization: Bearer <key>` header to every request.
+
+### Environment variables
+
+Store your key in an environment variable — never hardcode it:
+
+<CodeGroup>
+```bash .env
+MINNS_API_KEY=mk_live_abc123...
+```
+
+```bash Linux / macOS
+export MINNS_API_KEY=mk_live_abc123...
+```
+
+```powershell Windows (PowerShell)
+$env:MINNS_API_KEY = "mk_live_abc123..."
+```
+</CodeGroup>
+
+Then reference it in your code:
+
+```typescript
+const client = createClient({
+  baseUrl: "https://minns.ai/api/",
+  apiKey: process.env.MINNS_API_KEY,
+});
+```
+
+---
+
+## Key rotation
+
+Rotating API keys regularly is a security best practice. Minns Memory Layer supports seamless rotation with zero downtime — you can have multiple active keys at the same time during the transition period.
+
+### How to rotate
+
+<Steps>
+  <Step title="Create a new key">
+    On the project page, go to **Settings** → **API Keys** and click **Create Key**. Name it something like `production-v2` so you can track the rotation.
+  </Step>
+  <Step title="Deploy the new key">
+    Update your application's environment variables with the new key. Deploy the change to all instances.
+  </Step>
+  <Step title="Verify the new key is working">
+    Monitor your application logs to confirm requests are succeeding with the new key. Check the **API Keys** page — you'll see request counts incrementing on the new key.
+  </Step>
+  <Step title="Revoke the old key">
+    Once you're confident all traffic has migrated, click the **Revoke** button next to the old key on the project page. It takes effect immediately.
+  </Step>
+</Steps>
+
+<Tip>
+  During rotation, both the old and new keys are valid simultaneously. This gives you time to roll out the new key across all services without any downtime.
+</Tip>
+
+### Rotation checklist
+
+| Step | Action | Verification |
+| :--- | :--- | :--- |
+| 1 | Create new key on project page | Key appears in the API Keys list |
+| 2 | Update `MINNS_API_KEY` in all environments | Environment variable updated |
+| 3 | Redeploy application | All instances using new key |
+| 4 | Monitor for 24 hours | No `401` errors in logs |
+| 5 | Revoke old key | Old key shows "Revoked" status |
+
+---
+
+## Key types
+
+| Prefix | Environment | Use case |
+| :--- | :--- | :--- |
+| `mk_live_` | Production | Live agent traffic — full access |
+| `mk_test_` | Testing | Development and staging — same API, isolated data |
+
+<Info>
+  Test keys operate against the same API but use an isolated data namespace. Events ingested with a test key won't appear in production queries.
+</Info>
+
+---
+
+## Error responses
+
+If authentication fails, the API returns a `401 Unauthorized` response:
+
+```json
+{
+  "error": "unauthorized",
+  "message": "Invalid or missing API key. Include a valid key in the Authorization header."
+}
+```
+
+Common causes:
+
+| Error | Cause | Fix |
+| :--- | :--- | :--- |
+| `401 Unauthorized` | Missing or invalid `Authorization` header | Check that the header is `Bearer <key>` with no extra spaces |
+| `401 Unauthorized` | Key has been revoked | Create a new key on the project page |
+| `403 Forbidden` | Key doesn't have permission for this endpoint | Check key permissions in project settings |
+
+---
+
+## Security best practices
+
+<CardGroup cols={2}>
+  <Card title="Use environment variables" icon="lock">
+    Never hardcode API keys. Use `.env` files locally and secrets managers in production (AWS Secrets Manager, Vault, etc.).
+  </Card>
+  <Card title="Rotate regularly" icon="arrows-rotate">
+    Rotate keys every 90 days, or immediately if you suspect a key has been compromised.
+  </Card>
+  <Card title="Use separate keys per environment" icon="layer-group">
+    Create distinct keys for development, staging, and production. Revoke dev keys freely without affecting prod.
+  </Card>
+  <Card title="Audit key usage" icon="chart-line">
+    Check the project page periodically to see which keys are active and how much traffic each one handles.
+  </Card>
+</CardGroup>
+
+---
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get your first event logged in under 5 minutes.
+  </Card>
+  <Card title="SDK installation" icon="cube" href="/sdk/installation">
+    Set up the full SDK with all configuration options.
+  </Card>
+</CardGroup>
