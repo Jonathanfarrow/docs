@@ -147,6 +147,9 @@
     ]
   },
   "openapi": ["/openapi.json"],
+  "chat": {
+    "enabled": true
+  },
   "footer": {
     "socials": {
       "github": "https://github.com/mintlify"

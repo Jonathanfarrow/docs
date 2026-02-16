@@ -29,8 +29,8 @@ npm install minns-sdk
 import { createClient } from 'minns-sdk';
 
 const client = createClient({
-  baseUrl: "https://your-event-graph.api",
-  enableDefaultTelemetry: true, 
+  apiKey: process.env.MINNS_API_KEY,
+  enableDefaultTelemetry: true,
   defaultAsync: true,           // processEvent() returns local receipt by default
   autoBatch: true,              // Buffer events locally for network efficiency
   batchInterval: 100,           // Flush queue every 100ms

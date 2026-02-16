@@ -1,12 +1,12 @@
 ---
 title: "Minns Memory Layer"
 sidebarTitle: "Introduction"
-description: "The graph-native database built for agentic AI workflows. Store events, form memories, extract knowledge, and learn strategies — automatically."
+description: "An intelligent memory layer for agentic AI workflows. Store events, form memories, extract knowledge, and learn strategies — automatically."
 ---
 
-Minns Memory Layer is a purpose-built database for **agentic workflows**. Unlike traditional databases, it understands the *intent* (Goals) and *context* of every interaction your AI agents perform.
+Minns Memory Layer is an **intelligent memory layer** for **agentic workflows**. Unlike traditional storage, it understands the *intent* (Goals) and *context* of every interaction your AI agents perform.
 
-Every event you log is automatically woven into a knowledge graph that powers long-term memory, episode detection, claim extraction, and strategy learning.
+Every event you log is automatically processed — backed by a knowledge graph — to power long-term memory, episode detection, claim extraction, and strategy learning.
 
 <CardGroup cols={2}>
   <Card title="Core concepts" icon="lightbulb" href="/concepts">
@@ -29,8 +29,8 @@ Every event you log is automatically woven into a knowledge graph that powers lo
   <Step title="Log events">
     Send structured events — actions, observations, messages, reasoning — to the `POST /api/events` endpoint or via the SDK.
   </Step>
-  <Step title="Automatic graph construction">
-    Minns Memory Layer builds a knowledge graph in real time: nodes for events, goals, actions, and contexts — connected by typed edges.
+  <Step title="Automatic knowledge construction">
+    Minns Memory Layer organises events, goals, actions, and contexts into a knowledge graph in real time — forming a rich understanding of your agent's history.
   </Step>
   <Step title="Episode detection">
     Events sharing the same goal are grouped into **Episodes**. When a goal reaches `progress: 1.0`, the episode is completed.

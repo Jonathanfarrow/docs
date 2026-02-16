@@ -45,7 +45,6 @@ Pass your API key when creating the client:
 import { createClient } from 'minns-sdk';
 
 const client = createClient({
-  baseUrl: "https://minns.ai/api/",
   apiKey: process.env.MINNS_API_KEY,  // Always use environment variables
   autoBatch: true,
   batchInterval: 100,
@@ -77,7 +76,6 @@ Then reference it in your code:
 
 ```typescript
 const client = createClient({
-  baseUrl: "https://minns.ai/api/",
   apiKey: process.env.MINNS_API_KEY,
 });
 ```

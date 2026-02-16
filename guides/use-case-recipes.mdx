@@ -12,7 +12,6 @@ Every recipe assumes you have a configured client:
 import { createClient } from 'minns-sdk';
 
 const client = createClient({
-  baseUrl: "https://minns.ai/api/",
   apiKey: process.env.MINNS_API_KEY,
   autoBatch: true,
   batchInterval: 100,

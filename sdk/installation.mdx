@@ -22,13 +22,12 @@ pnpm add minns-sdk
 
 ## Client configuration
 
-Create a client instance with `createClient`. All options have sensible defaults — only `baseUrl` is required.
+Create a client instance with `createClient`. All options have sensible defaults — only `apiKey` is required.
 
 ```typescript
 import { createClient } from 'minns-sdk';
 
 const client = createClient({
-  baseUrl: "https://minns.ai/api/",
   apiKey: process.env.MINNS_API_KEY,
   enableDefaultTelemetry: true,
   defaultAsync: true,
@@ -43,7 +42,6 @@ const client = createClient({
 
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `baseUrl` | `string` | — | Base URL of your Minns Memory Layer server |
 | `apiKey` | `string` | — | Your API key (see [Authentication](/authentication)) |
 | `enableDefaultTelemetry` | `boolean` | `true` | Enable fire-and-forget performance telemetry |
 | `defaultAsync` | `boolean` | `true` | When `true`, `processEvent()` returns a local receipt immediately |
