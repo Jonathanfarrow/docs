@@ -1,0 +1,82 @@
+---
+title: "Ingest conversations"
+api: "POST /api/conversations/ingest"
+description: "Ingest multi-session conversations with inline LLM compaction for bulk or historical ingestion."
+---
+
+Ingest one or more conversation sessions. Each message is converted to a graph event and processed through the pipeline. Inline LLM compaction extracts structured facts and writes them as graph edges. Idempotent per `case_id` — re-ingesting the same `(case_id, session_id, message_index)` tuple is a no-op.
+
+<ParamField body="case_id" type="string">
+  Case identifier. Auto-generated UUID if omitted. Use the same `case_id` across calls for incremental ingestion with stable entity resolution.
+</ParamField>
+
+<ParamField body="sessions" type="array" required>
+  One or more conversation sessions to ingest.
+</ParamField>
+
+<ParamField body="sessions[].session_id" type="string" required>
+  Unique session identifier.
+</ParamField>
+
+<ParamField body="sessions[].topic" type="string">
+  Topic label for context.
+</ParamField>
+
+<ParamField body="sessions[].messages" type="array" required>
+  Ordered messages in the session.
+</ParamField>
+
+<ParamField body="sessions[].messages[].role" type="string" required>
+  `"user"` or `"assistant"`
+</ParamField>
+
+<ParamField body="sessions[].messages[].content" type="string" required>
+  Message text.
+</ParamField>
+
+<ParamField body="include_assistant_facts" type="boolean" default="false">
+  If `true`, extract facts from assistant messages too.
+</ParamField>
+
+<ResponseExample>
+```json 200
+{
+  "case_id": "trip_expenses_2024",
+  "messages_processed": 7,
+  "events_submitted": 8,
+  "compaction": {
+    "facts_extracted": 5,
+    "goals_extracted": 0,
+    "goals_deduplicated": 0,
+    "procedural_steps": 0,
+    "memories_created": false,
+    "memories_updated": 0,
+    "memories_deleted": 0,
+    "playbooks_extracted": 0,
+    "llm_success": true
+  },
+  "rolling_summary_started": true
+}
+```
+</ResponseExample>
+
+## Fact categories
+
+Compaction extracts facts and writes them as typed graph edges:
+
+| Category | Edge Type | Example Message |
+| :--- | :--- | :--- |
+| `location` | `state:location` | `"I'm moving to NYC"` |
+| `work` | `state:work` | `"I started a new job at Google"` |
+| `financial` | `financial:payment` | `"Alice: Paid €50 for lunch"` |
+| `relationship` | `relationship:*` | `"Johnny works with Christopher"` |
+| `preference` | `preference:*` | `"I love fantasy novels"` |
+| `routine` | `state:routine` | `"I take morning walks in Battery Park"` |
+
+## Incremental ingestion
+
+The server maintains a persistent `ConversationState` per `case_id` across API calls:
+
+- **Stable entity IDs** — Alice always maps to the same Concept node regardless of which batch she first appeared in
+- **Idempotency** — re-ingesting the same message is a no-op (0 messages processed)
+- **Participant accumulation** — known participants grow across calls, so "split among all" resolves to the full set

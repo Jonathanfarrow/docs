@@ -1,22 +1,20 @@
 ---
 title: "Minns Memory Layer"
 sidebarTitle: "Introduction"
-description: "An intelligent memory layer for agentic AI workflows. Store events, form memories, extract knowledge, and learn strategies — automatically."
+description: "A graph-native memory engine that turns conversations into queryable knowledge. Send messages, ask questions in natural language, and build intelligent memory for your AI applications."
 ---
 
-Minns Memory Layer is an **intelligent memory layer** for **agentic workflows**. Unlike traditional storage, it understands the *intent* (Goals) and *context* of every interaction your AI agents perform.
-
-Every event you log is automatically processed — backed by a knowledge graph — to power long-term memory, episode detection, claim extraction, and strategy learning.
+Minns Memory Layer is a **graph-native memory engine** for AI applications. Send messages or conversations, and Minns automatically extracts structured knowledge — locations, relationships, preferences, financial transactions — into a queryable graph.
 
 <CardGroup cols={2}>
   <Card title="Core concepts" icon="lightbulb" href="/concepts">
-    Understand Events, Episodes, Goals, Memory, and Strategies.
+    Understand Messages, Conversations, Query, and how knowledge is extracted.
   </Card>
   <Card title="Quickstart" icon="rocket" href="/quickstart">
-    Get up and running in under 5 minutes.
+    Send your first message and query the graph in under 5 minutes.
   </Card>
   <Card title="TypeScript SDK" icon="cube" href="/sdk/installation">
-    Install the SDK and start logging events immediately.
+    Install the SDK and start sending messages immediately.
   </Card>
   <Card title="API Reference" icon="square-terminal" href="/api-reference/introduction">
     Explore every endpoint with full request and response schemas.
@@ -26,22 +24,27 @@ Every event you log is automatically processed — backed by a knowledge graph �
 ## How it works
 
 <Steps>
-  <Step title="Log events">
-    Send structured events — actions, observations, messages, reasoning — to the `POST /api/events` endpoint or via the SDK.
+  <Step title="Send messages">
+    Send messages as they arrive with `sendMessage()`, or ingest historical conversations in bulk with `ingestConversations()`.
   </Step>
-  <Step title="Automatic knowledge construction">
-    Minns Memory Layer organises events, goals, actions, and contexts into a knowledge graph in real time — forming a rich understanding of your agent's history.
+  <Step title="Automatic knowledge extraction">
+    Minns extracts structured facts from your messages — locations, relationships, preferences, financial transactions — and writes them as graph edges. No manual schema needed.
   </Step>
-  <Step title="Episode detection">
-    Events sharing the same goal are grouped into **Episodes**. When a goal reaches `progress: 1.0`, the episode is completed.
+  <Step title="Query in natural language">
+    Ask questions about your graph in plain English with `query()`. The pipeline classifies intent, resolves entities, and returns human-readable answers.
   </Step>
-  <Step title="Memory & strategy extraction">
-    Completed episodes become searchable **Memories**. Successful patterns are extracted as reusable **Strategies**.
-  </Step>
-  <Step title="Query & recall">
-    Retrieve memories by context, search claims semantically, or ask the Policy Guide "What should I do next?"
+  <Step title="Knowledge grows over time">
+    As more data flows in, the graph builds richer connections. Entity resolution ensures consistent identity across messages and sessions.
   </Step>
 </Steps>
+
+## Three core endpoints
+
+| Endpoint | Use case | Description |
+| :--- | :--- | :--- |
+| `sendMessage()` | Real-time | Send individual messages as they arrive. Deferred compaction. |
+| `ingestConversations()` | Bulk / historical | Ingest multiple sessions at once. Inline compaction. |
+| `query()` | Retrieval | Ask questions in natural language. Get human-readable answers. |
 
 ## Choose your path
 

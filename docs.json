@@ -26,7 +26,9 @@
             "group": "TypeScript SDK",
             "pages": [
               "sdk/installation",
-              "sdk/event-builder",
+              "sdk/messages",
+              "sdk/conversations",
+              "sdk/query",
               "sdk/memory-strategies",
               "sdk/sidecar",
               "sdk/security"
@@ -39,6 +41,12 @@
               "guides/use-case-recipes",
               "guides/query-selection",
               "guides/integration-examples"
+            ]
+          },
+          {
+            "group": "Advanced: Events & Telemetry",
+            "pages": [
+              "sdk/event-builder"
             ]
           }
         ]
@@ -54,12 +62,30 @@
             ]
           },
           {
-            "group": "Events",
+            "group": "Messages",
             "pages": [
-              "api-reference/events/process-event",
-              "api-reference/events/get-events",
-              "api-reference/events/get-episodes",
-              "api-reference/events/event-types"
+              "api-reference/messages/send-message"
+            ]
+          },
+          {
+            "group": "Conversations",
+            "pages": [
+              "api-reference/conversations/ingest"
+            ]
+          },
+          {
+            "group": "Query",
+            "pages": [
+              "api-reference/nlq/query"
+            ]
+          },
+          {
+            "group": "Claims & semantic memory",
+            "pages": [
+              "api-reference/claims/list-claims",
+              "api-reference/claims/get-claim",
+              "api-reference/claims/search-claims",
+              "api-reference/claims/process-embeddings"
             ]
           },
           {
@@ -78,15 +104,6 @@
             ]
           },
           {
-            "group": "Claims & semantic memory",
-            "pages": [
-              "api-reference/claims/list-claims",
-              "api-reference/claims/get-claim",
-              "api-reference/claims/search-claims",
-              "api-reference/claims/process-embeddings"
-            ]
-          },
-          {
             "group": "Graph & analytics",
             "pages": [
               "api-reference/graph/get-graph",
@@ -102,6 +119,15 @@
             "group": "System",
             "pages": [
               "api-reference/system/health"
+            ]
+          },
+          {
+            "group": "Advanced: Events & Telemetry",
+            "pages": [
+              "api-reference/events/process-event",
+              "api-reference/events/get-events",
+              "api-reference/events/get-episodes",
+              "api-reference/events/event-types"
             ]
           }
         ]

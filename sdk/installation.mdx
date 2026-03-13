@@ -1,7 +1,7 @@
 ---
 title: "Installation & setup"
 sidebarTitle: "Installation"
-description: "Install the minns-sdk and configure the Minns Memory Layer client for your application."
+description: "Install the minns-sdk and configure the client to start sending messages."
 ---
 
 ## Installation
@@ -22,19 +22,25 @@ pnpm add minns-sdk
 
 ## Client configuration
 
-Create a client instance with `createClient`. All options have sensible defaults — only `apiKey` is required.
+Create a client instance with `createClient`. Only an API key is required.
 
 ```typescript
 import { createClient } from 'minns-sdk';
 
-const client = createClient({
+// Simple — API key only
+const client = createClient("your-api-key");
+```
+
+For more control:
+
+```typescript
+import { MinnsClient } from 'minns-sdk';
+
+const client = new MinnsClient({
   apiKey: process.env.MINNS_API_KEY,
-  enableDefaultTelemetry: true,
-  defaultAsync: true,
-  autoBatch: true,
-  batchInterval: 100,
-  batchMaxSize: 20,
-  maxQueueSize: 1000,
+  debug: true,
+  enableSemantic: true,
+  timeout: 30000,
 });
 ```
 
@@ -43,61 +49,56 @@ const client = createClient({
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `apiKey` | `string` | — | Your API key (see [Authentication](/authentication)) |
-| `enableDefaultTelemetry` | `boolean` | `true` | Enable fire-and-forget performance telemetry |
-| `defaultAsync` | `boolean` | `true` | When `true`, `processEvent()` returns a local receipt immediately |
-| `autoBatch` | `boolean` | `false` | Buffer events locally and flush in batches |
-| `batchInterval` | `number` | `100` | Flush the batch queue every N milliseconds |
-| `batchMaxSize` | `number` | `20` | Flush when the queue reaches N events |
-| `maxQueueSize` | `number` | `1000` | Maximum local queue depth. `enqueue()` throws if exceeded |
+| `agentId` | `AgentId` | — | Default agent ID for event builders |
+| `sessionId` | `SessionId` | — | Default session ID for event builders |
+| `timeout` | `number` | `30000` | Request timeout in milliseconds |
+| `debug` | `boolean` | `false` | Log all requests and responses to the console |
+| `enableSemantic` | `boolean` | `false` | Enable semantic indexing on all events by default |
+| `enableDefaultTelemetry` | `boolean` | `false` | Send telemetry to `/api/telemetry` (fire-and-forget) |
+| `maxPayloadSize` | `number` | `1048576` | Maximum payload size in bytes (1MB) |
+| `defaultAsync` | `boolean` | `false` | If true, `processEvent()` fires in the background |
+| `autoBatch` | `boolean` | `false` | Buffer events and send in batches |
+| `batchInterval` | `number` | `100` | Max ms before flushing the batch queue |
+| `batchMaxSize` | `number` | `10` | Max events before forcing a flush |
+| `maxQueueSize` | `number` | `1000` | Max local queue depth before `enqueue()` throws |
 
-## Two ways to submit events
+<Info>
+  The base URL is `https://minns.ai` and is not configurable.
+</Info>
 
-The SDK provides two submission modes:
-
-### `send()` — synchronous
-
-Waits for the server response before continuing. Use this when you need the response immediately.
-
-```typescript
-const response = await client.event("research-agent", { agentId: 123, sessionId: 456 })
-  .action("search_database", { query: "quantum computing" })
-  .outcome({ resultsFound: 10 })
-  .send();
-
-console.log(response.nodes_created); // 5
-```
-
-### `enqueue()` — asynchronous
-
-Returns a local acknowledgement immediately and queues the event for background submission. Use this to keep your agent loop fast.
+## Quick example
 
 ```typescript
-const receipt = await client.event("research-agent")
-  .observation("web_page", { target: "https://github.com" })
-  .enqueue();
-```
+import { createClient } from 'minns-sdk';
 
-<Warning>
-  Always call `await client.flush()` before your process exits to ensure all queued events are submitted.
-</Warning>
+const client = createClient("your-api-key");
 
-## Direct event submission
+// Send a message
+await client.sendMessage({
+  role: "user",
+  content: "Alice: Paid €50 for lunch - split with Bob",
+  case_id: "trip_2024",
+});
 
-You can also bypass the fluent builder and submit raw `Event` objects:
+// Query the graph
+const answer = await client.query("Who owes whom?");
+console.log(answer.answer);
 
-```typescript
-// Single event
-const response = await client.processEvent(event, { enableSemantic: true });
-
-// Multiple events (automatically chunked by batchMaxSize)
-const response = await client.processEvents([event1, event2, event3]);
+// Clean up
+await client.destroy();
 ```
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Event builder" icon="wrench" href="/sdk/event-builder">
-    Build rich events with the fluent API.
+  <Card title="Messages" icon="message" href="/sdk/messages">
+    Send messages in real time with deferred compaction.
+  </Card>
+  <Card title="Conversations" icon="comments" href="/sdk/conversations">
+    Ingest batches of historical conversations.
+  </Card>
+  <Card title="Query" icon="magnifying-glass" href="/sdk/query">
+    Ask questions about your graph in natural language.
   </Card>
   <Card title="Memory & strategies" icon="brain" href="/sdk/memory-strategies">
     Query memories, claims, and learned strategies.

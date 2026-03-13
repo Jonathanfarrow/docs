@@ -1,0 +1,95 @@
+---
+title: "Messages"
+description: "Send individual messages in real time. Each message is processed through the graph pipeline with deferred LLM compaction."
+---
+
+The primary way to send data into Minns. Send individual messages as they arrive — each is processed through the graph pipeline immediately, then buffered for deferred LLM compaction.
+
+## Sending a message
+
+```typescript
+const res = await client.sendMessage({
+  role: "user",
+  content: "Alice: Paid €50 for lunch - split with Bob",
+  case_id: "trip_expenses_2024",
+  session_id: "session_01",
+});
+
+// res.buffered    — true if compaction is still pending
+// res.buffer_size — current buffer depth
+// res.compaction  — non-null when compaction was triggered
+```
+
+## Parameters
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `role` | `string` | Yes | `"user"` or `"assistant"` |
+| `content` | `string` | Yes | Message text |
+| `case_id` | `string` | No | Case identifier for entity resolution continuity; auto-generated if omitted |
+| `session_id` | `string` | No | Session identifier; auto-generated if omitted |
+| `include_assistant_facts` | `boolean` | No | Extract facts from assistant messages too (default `false`) |
+
+## How it works
+
+1. The message is processed through the graph pipeline immediately — a graph node is created
+2. The message is buffered for deferred LLM compaction
+3. When the buffer reaches **6 messages** or **30 seconds**, compaction fires automatically
+4. Compaction extracts structured facts (locations, relationships, preferences, financial transactions) and writes them as graph edges
+
+<Info>
+  Use the same `case_id` across calls for stable entity resolution and automatic deduplication. Alice always resolves to the same graph node regardless of which message she first appeared in.
+</Info>
+
+## Fact categories
+
+Compaction extracts facts and writes them as typed graph edges:
+
+| Category | Edge Type | Example Message |
+| :--- | :--- | :--- |
+| `location` | `state:location` | `"I'm moving to NYC"` |
+| `work` | `state:work` | `"I started a new job at Google"` |
+| `financial` | `financial:payment` | `"Alice: Paid €50 for lunch"` |
+| `relationship` | `relationship:*` | `"Johnny works with Christopher"` |
+| `preference` | `preference:*` | `"I love fantasy novels"` |
+| `routine` | `state:routine` | `"I take morning walks in Battery Park"` |
+
+## Example: streaming conversation
+
+```typescript
+const client = createClient("your-api-key");
+
+// Messages arrive one at a time
+await client.sendMessage({
+  role: "user",
+  content: "I live in Alfama, Lisbon.",
+  case_id: "user_profile",
+});
+
+await client.sendMessage({
+  role: "user",
+  content: "I'm moving to Lower Manhattan, NYC.",
+  case_id: "user_profile",
+});
+
+await client.sendMessage({
+  role: "user",
+  content: "Johnny Fisher works with Christopher Peterson.",
+  case_id: "user_profile",
+});
+
+// Now query the extracted knowledge
+const answer = await client.query("Where does the user live?");
+// → "The user is moving to Lower Manhattan, NYC (previously lived in Alfama, Lisbon)"
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Conversations" icon="comments" href="/sdk/conversations">
+    Ingest batches of historical conversations at once.
+  </Card>
+  <Card title="Query" icon="magnifying-glass" href="/sdk/query">
+    Ask questions about your graph in natural language.
+  </Card>
+</CardGroup>

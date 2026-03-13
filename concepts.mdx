@@ -1,108 +1,108 @@
 ---
 title: "Core concepts"
-description: "Understand the building blocks of Minns Memory Layer — Events, Episodes, Goals, Memory, Claims, and Strategies."
+description: "Understand the building blocks of Minns Memory Layer — Messages, Conversations, Query, and the knowledge graph that connects them."
 ---
 
-Minns Memory Layer models the full lifecycle of an agentic interaction. Here are the six core primitives you need to know.
+Minns Memory Layer turns conversations into structured, queryable knowledge. Here are the core concepts you need to know.
 
-## Events
+## Messages & Conversations
 
-An **Event** is an atomic interaction — a user message, an AI action, a sensor reading, or a reasoning step. Every piece of data enters Minns Memory Layer as an event.
+The two primary ways to get data into Minns:
 
-Events carry rich context including:
-- **Who** — the agent and session that produced the event
-- **What** — the event type and payload (Action, Observation, Communication, Cognitive, Learning, or Context)
-- **Why** — the active goals driving the interaction
-- **Where** — the environmental state at the time of the event
+- **Messages** (`sendMessage()`) — send individual messages as they arrive in real time. Each message is processed immediately and buffered for deferred LLM compaction.
+- **Conversations** (`ingestConversations()`) — ingest multiple sessions at once with inline LLM compaction. Use this for bulk or historical data.
+
+Both methods produce the same result: structured facts written as graph edges.
 
 ```typescript
-// A Communication event logged by the SDK
-await client.event("movie-bot", { agentId: 1, sessionId: 5001 })
-  .context("I want to book Interstellar for tonight.", "conversation")
-  .goal("book_movie", 5)
-  .send();
+// Real-time: one message at a time
+await client.sendMessage({
+  role: "user",
+  content: "Alice: Paid €50 for lunch - split with Bob",
+  case_id: "trip_2024",
+});
+
+// Bulk: multiple sessions at once
+await client.ingestConversations({
+  case_id: "trip_2024",
+  sessions: [{ session_id: "s1", messages: [...] }],
+});
 ```
 
-## Episodes
+## Knowledge extraction
 
-An **Episode** is a sequence of events forming a coherent task. Minns Memory Layer automatically groups events that share the same active goal into episodes.
+When messages arrive, Minns automatically extracts structured facts using LLM compaction:
 
-When a goal's `progress` field reaches `1.0`, the episode is marked as complete and becomes a candidate for long-term memory.
-
-<Info>
-  You control episode boundaries by updating the `progress` field on your goals. Set `progress: 0.0` at the start and `progress: 1.0` when the task is done.
-</Info>
-
-## Goals
-
-A **Goal** is the objective driving an episode. Goals are embedded in every event's `context.active_goals` array, which lets Minns Memory Layer understand that a `Communication` event and an `Action` event belong to the same task.
-
-| Field | Type | Description |
+| Category | Edge Type | Example |
 | :--- | :--- | :--- |
-| `id` | `u64` | Unique goal identifier |
-| `description` | `String` | Human-readable description (e.g., `"book_movie"`) |
-| `priority` | `f32` | Priority level (`0.0` to `1.0`) |
-| `progress` | `f32` | Completion progress (`0.0` to `1.0`) |
-| `deadline` | `u64 \| null` | Optional deadline timestamp |
-| `subgoals` | `u64[]` | IDs of child goals |
+| `location` | `state:location` | `"I'm moving to NYC"` |
+| `work` | `state:work` | `"I started a new job at Google"` |
+| `financial` | `financial:payment` | `"Alice: Paid €50 for lunch"` |
+| `relationship` | `relationship:*` | `"Johnny works with Christopher"` |
+| `preference` | `preference:*` | `"I love fantasy novels"` |
+| `routine` | `state:routine` | `"I take morning walks in Battery Park"` |
+
+These facts become graph edges that can be queried using natural language.
+
+## Query
+
+Ask questions about the graph in plain English with `query()`. The pipeline classifies your question's intent, resolves entity mentions to graph nodes, and returns a human-readable answer.
+
+```typescript
+const answer = await client.query("Who owes whom?");
+// → "Bob owes Alice €25.00 for lunch"
+```
+
+Supported intents include `FindNeighbors`, `FindPath`, `Aggregate`, `TemporalChain`, `StructuredMemoryQuery`, and more.
+
+## Entity resolution
+
+Minns maintains stable entity identity across messages and sessions. When you use the same `case_id`, "Alice" always resolves to the same graph node — regardless of which message or batch she first appeared in.
+
+## Claims
+
+A **Claim** is an atomic fact extracted from message content — for example, *"User prefers Sci-Fi movies"* or *"Alice paid €50 for lunch."* Claims power the semantic search system (`searchClaims()`), which lets you query soft knowledge using natural language.
 
 ## Memory
 
-A **Memory** is the long-term record of a significant episode. Once an episode completes, Minns Memory Layer consolidates it into a memory that can be recalled later by matching the current context against past contexts.
-
-Memories are typed:
+A **Memory** is a long-term record of a significant experience. Memories are typed:
 - **Episodic** — a full episode record
 - **Working** — short-term, high-relevance memory
 - **Semantic** — distilled facts and knowledge
 - **Negative** — records of failed approaches to avoid repeating mistakes
 
 <Tip>
-  Use the `POST /api/memories/context` endpoint to answer *"What did we do last time we were in this exact situation?"*
+  Use `getContextMemories()` to answer *"What did we do last time we were in this exact situation?"*
 </Tip>
-
-## Claims
-
-A **Claim** is an atomic fact extracted from event content — for example, *"User prefers Sci-Fi movies"* or *"Seat H12 was booked successfully."*
-
-Claims are extracted automatically when you set `enable_semantic: true` on event submission. They power the semantic search system (`POST /api/claims/search`), which lets you query soft knowledge using natural language.
 
 ## Strategies
 
-A **Strategy** is a learned behavioral pattern extracted from successful episodes. If an agent repeatedly follows the same sequence of actions to achieve a goal, Minns Memory Layer distills that pattern into a reusable strategy.
-
-Strategies include:
-- **Reasoning steps** — the ordered sequence of decisions
-- **Quality score** — how well the strategy performs
-- **Preconditions** — when the strategy applies
-- **Action hints** — what to do next
+A **Strategy** is a learned behavioral pattern extracted from successful episodes. If an agent repeatedly follows the same sequence of actions to achieve a goal, Minns distills that pattern into a reusable strategy.
 
 <Tip>
-  Use `POST /api/strategies/similar` to share successful patterns across different agents. If one agent learned how to handle a payment error, another can discover that strategy automatically.
+  Use `getSimilarStrategies()` to share successful patterns across different agents.
 </Tip>
 
 ## Putting it all together
 
 ```mermaid
 graph TD
-    A[Event ingested] --> B[Graph node created]
-    B --> C{Same goal active?}
-    C -->|Yes| D[Added to Episode]
-    C -->|No| E[New Episode started]
-    D --> F{Goal progress = 1.0?}
-    F -->|Yes| G[Episode completed]
-    G --> H[Memory formed]
-    G --> I[Strategy extracted]
-    G --> J[Claims stored]
-    F -->|No| K[Episode continues]
+    A[Message / Conversation] --> B[LLM Compaction]
+    B --> C[Fact Extraction]
+    C --> D[Graph Edges Created]
+    D --> E[Query with natural language]
+    D --> F[Semantic claim search]
+    D --> G[Memory formation]
+    G --> H[Strategy extraction]
 ```
 
 ## Next steps
 
 <CardGroup cols={2}>
   <Card title="Quickstart" icon="rocket" href="/quickstart">
-    Set up the SDK and log your first event.
+    Send your first message and query the graph.
   </Card>
-  <Card title="Event types reference" icon="list" href="/api-reference/events/event-types">
-    Deep dive into every event type variant.
+  <Card title="Messages" icon="message" href="/sdk/messages">
+    Learn about real-time message ingestion.
   </Card>
 </CardGroup>

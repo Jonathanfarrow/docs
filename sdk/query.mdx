@@ -1,0 +1,84 @@
+---
+title: "Query"
+description: "Ask questions about your graph in plain English. The pipeline classifies intent, resolves entities, and returns human-readable answers."
+---
+
+Ask questions about your knowledge graph in plain English. The pipeline classifies intent, resolves entities, builds a graph query, and returns a human-readable answer.
+
+## Simple query
+
+```typescript
+const res = await client.query("Who owes whom?");
+
+// res.answer           — human-readable answer
+// res.intent           — classified intent (FindNeighbors, FindPath, Aggregate, etc.)
+// res.entities_resolved — resolved entity mentions
+// res.confidence       — classification confidence
+// res.explanation      — step-by-step reasoning
+```
+
+## Query with options
+
+```typescript
+const res = await client.query({
+  question: "What happened after the login event?",
+  limit: 20,
+  sessionId: "session-1",
+});
+```
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `question` | `string` | Yes | Natural language question |
+| `limit` | `number` | No | Pagination limit |
+| `sessionId` | `string` | No | Session ID for conversational follow-ups (up to 5 exchanges) |
+
+## Supported intents
+
+The query pipeline classifies your question into one of these intents:
+
+| Intent | Example Questions |
+| :--- | :--- |
+| `FindNeighbors` | "Who connects to Alice?", "neighbors of Bob" |
+| `FindPath` | "Shortest path from A to B" |
+| `FilteredTraversal` | "What tools did agent X use?" |
+| `Subgraph` | "Show me everything about Alice" |
+| `TemporalChain` | "What happened after event X?" |
+| `Ranking` | "Most important nodes", "top nodes by PageRank" |
+| `SimilaritySearch` | "Find similar to X" |
+| `Aggregate` | "How many nodes?", "sum of amount between A and B" |
+| `StructuredMemoryQuery` | "What is the balance between Alice and Bob?", "current state of Order-123" |
+
+## Conversational follow-ups
+
+When you provide a `sessionId`, the pipeline maintains context for up to 5 exchanges. Follow-ups resolve pronouns and entity substitutions automatically.
+
+```typescript
+const session = "chat-1";
+
+await client.query({ question: "Who are Alice's neighbors?", sessionId: session });
+// → "Bob, Charlie"
+
+await client.query({ question: "What about Bob?", sessionId: session });
+// → Resolves "Bob" from previous context, shows Bob's neighbors
+```
+
+## Compound queries
+
+Questions containing "and" or "or" are split into sub-queries and merged:
+
+```typescript
+await client.query("Who is connected to Alice and what is the balance between Alice and Bob?");
+// → Runs two sub-queries (FindNeighbors + Aggregate) and merges results
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Messages" icon="message" href="/sdk/messages">
+    Send individual messages to build your graph.
+  </Card>
+  <Card title="Conversations" icon="comments" href="/sdk/conversations">
+    Ingest batches of historical conversations.
+  </Card>
+</CardGroup>

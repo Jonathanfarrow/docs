@@ -1,0 +1,75 @@
+---
+title: "Query"
+api: "POST /api/nlq"
+description: "Ask questions about the graph in plain English. Returns human-readable answers with entity resolution and intent classification."
+---
+
+Ask questions about the graph in plain English. The pipeline classifies intent, resolves entities, builds a graph query, executes it, and returns a human-readable answer.
+
+<ParamField body="question" type="string" required>
+  Natural language question.
+</ParamField>
+
+<ParamField body="limit" type="integer" default="10">
+  Pagination limit.
+</ParamField>
+
+<ParamField body="offset" type="integer" default="0">
+  Pagination offset.
+</ParamField>
+
+<ParamField body="session_id" type="string">
+  Session ID for conversational context. When provided, the pipeline maintains context for up to 5 exchanges. Follow-ups like "What about Bob?" resolve pronouns and entity substitutions using the previous exchange.
+</ParamField>
+
+<ResponseExample>
+```json 200
+{
+  "answer": "Neighbors of Alice: Bob (Association)",
+  "intent": "FindNeighbors",
+  "entities_resolved": [
+    {
+      "text": "Alice",
+      "node_id": 1,
+      "node_type": "Concept",
+      "confidence": 0.95
+    }
+  ],
+  "confidence": 0.87,
+  "result_count": 1,
+  "execution_time_ms": 5,
+  "query_used": "NeighborsWithinDistance { source: 1, max_distance: 1, direction: Both }",
+  "explanation": [
+    "Intent classified as FindNeighbors",
+    "1 entity mention(s) extracted",
+    "Resolved 'Alice' -> Concept #1 (0.95)",
+    "Matched template 'neighbors_any'",
+    "Built query: NeighborsWithinDistance",
+    "Query validated successfully"
+  ],
+  "total_count": 1
+}
+```
+</ResponseExample>
+
+## Supported intents
+
+| Intent | Example Questions |
+| :--- | :--- |
+| `FindNeighbors` | "Who connects to X?", "neighbors of X" |
+| `FindPath` | "Shortest path from A to B" |
+| `FilteredTraversal` | "What tools did agent X use?" |
+| `Subgraph` | "Show me everything about X" |
+| `TemporalChain` | "What happened after event X?" |
+| `Ranking` | "Most important nodes", "top nodes by PageRank" |
+| `SimilaritySearch` | "Find similar to X" |
+| `Aggregate` | "How many nodes?", "sum of amount between A and B" |
+| `StructuredMemoryQuery` | "What is the balance between A and B?", "current state of X" |
+
+## Compound queries
+
+Questions containing "and" or "or" are split into sub-queries and merged (intersection/union).
+
+## Negation
+
+"Not connected to X" inverts the result set.

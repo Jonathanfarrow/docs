@@ -1,0 +1,89 @@
+---
+title: "Conversations"
+description: "Ingest multiple conversation sessions at once with inline LLM compaction. Use this for bulk or historical ingestion."
+---
+
+Ingest multiple conversation sessions at once with inline LLM compaction. Use this when you have a batch of historical conversations to process, or when you want to send a full conversation in one call.
+
+## Ingesting conversations
+
+```typescript
+const result = await client.ingestConversations({
+  case_id: "trip_expenses_2024",
+  sessions: [
+    {
+      session_id: "session_01",
+      topic: "Dinner expenses",
+      messages: [
+        { role: "user", content: "Alice: Paid €179 for museum - split with Bob" },
+        { role: "user", content: "Bob: Paid €107 for dinner - split among all" },
+      ],
+    },
+    {
+      session_id: "session_02",
+      topic: "Moving plans",
+      messages: [
+        { role: "user", content: "I'm moving to Lower Manhattan, NYC." },
+        { role: "user", content: "Johnny Fisher works with Christopher Peterson." },
+      ],
+    },
+  ],
+});
+
+// result.events_submitted            — number of events sent to the pipeline
+// result.compaction.facts_extracted   — structured facts extracted by LLM
+// result.compaction.llm_success       — whether all LLM calls succeeded
+// result.rolling_summary_started      — whether a rolling summary was initiated
+```
+
+## Parameters
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `case_id` | `string` | No | Case identifier; auto-generated UUID if omitted |
+| `sessions` | `array` | Yes | One or more conversation sessions |
+| `sessions[].session_id` | `string` | Yes | Unique session identifier |
+| `sessions[].topic` | `string` | No | Topic label for context |
+| `sessions[].messages` | `array` | Yes | Ordered messages |
+| `sessions[].messages[].role` | `string` | Yes | `"user"` or `"assistant"` |
+| `sessions[].messages[].content` | `string` | Yes | Message text |
+| `include_assistant_facts` | `boolean` | No | Extract facts from assistant messages too (default `false`) |
+
+## Incremental ingestion
+
+Use the same `case_id` across calls. The server preserves entity→ID mappings and deduplicates already-processed messages automatically.
+
+```typescript
+// Call 1: First batch
+await client.ingestConversations({ case_id: "trip_2024", sessions: [batch1] });
+
+// Call 2: More messages arrive later (same case_id)
+await client.ingestConversations({ case_id: "trip_2024", sessions: [batch2] });
+// Duplicate messages from batch1 are skipped automatically
+```
+
+<Info>
+  The server maintains a persistent `ConversationState` per `case_id`. Entity resolution uses the graph `concept_index` — Alice always maps to the same Concept node regardless of which batch she first appeared in.
+</Info>
+
+## Messages vs. Conversations
+
+| | `sendMessage()` | `ingestConversations()` |
+| :--- | :--- | :--- |
+| **Use case** | Real-time / streaming | Bulk / historical |
+| **Compaction** | Deferred (6 messages or 30s) | Inline (runs before response) |
+| **Throughput** | One message at a time | Multiple sessions in one call |
+| **When to use** | Chat applications, live streams | Importing past conversations, batch processing |
+
+Both methods produce the same graph edges and can be queried identically with `query()`.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Messages" icon="message" href="/sdk/messages">
+    Send individual messages in real time.
+  </Card>
+  <Card title="Query" icon="magnifying-glass" href="/sdk/query">
+    Ask questions about your graph in natural language.
+  </Card>
+</CardGroup>

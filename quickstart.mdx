@@ -1,6 +1,6 @@
 ---
 title: "Quickstart"
-description: "Get Minns Memory Layer running and log your first event in under 5 minutes."
+description: "Send your first message and query the graph in under 5 minutes."
 ---
 
 ## Prerequisites
@@ -30,54 +30,67 @@ pnpm add minns-sdk
 ```typescript
 import { createClient } from 'minns-sdk';
 
-const client = createClient({
-  apiKey: process.env.MINNS_API_KEY,
-  defaultAsync: true,
-  autoBatch: true,
-  batchInterval: 100,
-  batchMaxSize: 20,
+const client = createClient("your-api-key");
+```
+
+## Send your first messages
+
+Send messages as they arrive. Minns automatically extracts structured facts — locations, relationships, financial transactions — and writes them as graph edges.
+
+```typescript
+await client.sendMessage({
+  role: "user",
+  content: "Alice: Paid €50 for lunch - split with Bob",
+  case_id: "trip_2024",
+});
+
+await client.sendMessage({
+  role: "user",
+  content: "I'm moving to Lower Manhattan, NYC.",
+  case_id: "trip_2024",
+});
+
+await client.sendMessage({
+  role: "user",
+  content: "Johnny Fisher works with Christopher Peterson.",
+  case_id: "trip_2024",
 });
 ```
 
-## Log your first event
+## Query the graph
 
-Use the fluent event builder to send a user message tied to a goal:
+Ask questions about your data in plain English:
 
 ```typescript
-const response = await client.event("movie-bot", { agentId: 1, sessionId: 5001 })
-  .context("I want to book Interstellar for tonight.", "conversation")
-  .goal("book_movie", 5)
-  .send();
+const answer = await client.query("Who owes whom?");
+console.log(answer.answer);
+// → "Bob owes Alice €25.00 for lunch"
 
-console.log(response);
-// { success: true, nodes_created: 5, patterns_detected: 2, processing_time_ms: 15 }
+const location = await client.query("Where is the user moving?");
+console.log(location.answer);
+// → "The user is moving to Lower Manhattan, NYC"
 ```
 
-## Log an action with an outcome
+## Ingest conversations in bulk
+
+If you have historical conversations, ingest them all at once:
 
 ```typescript
-const actionResponse = await client.event("movie-bot", { agentId: 1, sessionId: 5001 })
-  .action("book_movie_ticket", { movie: "Interstellar", seat: "H12" })
-  .outcome({ confirmation_id: "CONF-123" })
-  .goal("book_movie", 5, 1.0) // progress = 1.0 completes the episode
-  .send();
-```
-
-## Recall memories
-
-After your agent has completed a few episodes, you can query for relevant past experiences:
-
-```typescript
-const memories = await client.getContextMemories({
-  active_goals: [{ id: 101, description: "book_movie", priority: 0.9, progress: 0.5, subgoals: [] }],
-  environment: { variables: { user_id: "user_99" }, temporal: { deadlines: [], patterns: [] } },
-  resources: {
-    computational: { cpu_percent: 50.0, memory_bytes: 1024000, storage_bytes: 1024000000, network_bandwidth: 1000 },
-    external: {}
-  }
+const result = await client.ingestConversations({
+  case_id: "trip_2024",
+  sessions: [
+    {
+      session_id: "session_01",
+      topic: "Dinner expenses",
+      messages: [
+        { role: "user", content: "Alice: Paid €179 for museum - split with Bob" },
+        { role: "user", content: "Bob: Paid €107 for dinner - split among all" },
+      ],
+    },
+  ],
 });
 
-console.log(memories);
+console.log(`Extracted ${result.compaction.facts_extracted} facts`);
 ```
 
 ## Search extracted knowledge
@@ -86,50 +99,34 @@ Query soft facts using natural language:
 
 ```typescript
 const claims = await client.searchClaims({
-  query_text: "What are the user's movie preferences?",
+  query_text: "What are the user's preferences?",
   top_k: 3,
   min_similarity: 0.7,
 });
 
-claims.forEach(c => console.log(c.claim_text));
-```
-
-## Get action suggestions
-
-Ask the Policy Guide what your agent should do next:
-
-```typescript
-const suggestions = await client.getActionSuggestions(contextHash);
-
-suggestions.forEach(s => {
-  console.log(`${s.action_name} — ${(s.success_probability * 100).toFixed(0)}% success`);
-  console.log(`  Reasoning: ${s.reasoning}`);
+claims.groups.forEach(g => {
+  console.log(`${g.subject}:`);
+  g.claims.forEach(c => console.log(`  ${c.claim_text}`));
 });
 ```
 
-## Clean shutdown
-
-Always flush the event buffer before your process exits:
+## Clean up
 
 ```typescript
-await client.flush();
+await client.destroy();
 ```
-
-<Warning>
-  If you skip `flush()`, any events still in the local auto-batch queue will be lost.
-</Warning>
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Event builder" icon="wrench" href="/sdk/event-builder">
-    Master the full fluent API for building rich events.
+  <Card title="Messages" icon="message" href="/sdk/messages">
+    Learn more about real-time message ingestion and compaction.
   </Card>
-  <Card title="Core concepts" icon="lightbulb" href="/concepts">
-    Understand how Events, Episodes, and Memories connect.
+  <Card title="Conversations" icon="comments" href="/sdk/conversations">
+    Bulk ingestion with incremental deduplication.
   </Card>
-  <Card title="Query selection guide" icon="magnifying-glass" href="/guides/query-selection">
-    Learn which search to use for every situation.
+  <Card title="Query" icon="magnifying-glass" href="/sdk/query">
+    Natural language queries with intent classification.
   </Card>
   <Card title="API Reference" icon="square-terminal" href="/api-reference/introduction">
     Explore every endpoint in detail.

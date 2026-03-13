@@ -1,7 +1,7 @@
 ---
 title: "API overview"
 sidebarTitle: "Overview"
-description: "The Minns Memory Layer REST API — base URL, authentication, conventions, and system limits."
+description: "The Minns Memory Layer REST API — base URL, authentication, conventions, and core endpoints."
 ---
 
 ## Base URL
@@ -29,9 +29,9 @@ The server automatically generates certain fields if you omit them:
 
 | Field | Auto-generated | Description |
 | :--- | :--- | :--- |
-| `event.id` | ✅ Yes | UUID generated if omitted |
-| `event.timestamp` | ✅ Yes | Current timestamp generated if omitted |
-| `context.fingerprint` | ✅ Yes | Hash computed if set to `0` or omitted |
+| `event.id` | Yes | UUID generated if omitted |
+| `event.timestamp` | Yes | Current timestamp generated if omitted |
+| `context.fingerprint` | Yes | Hash computed if set to `0` or omitted |
 
 <Tip>
   **Best practice:** Omit `id`, `timestamp`, and `fingerprint` and let the server generate them. This ensures consistency and reduces client complexity.
@@ -41,11 +41,10 @@ The server automatically generates certain fields if you omit them:
 
 | Scenario | Example | Behavior |
 | :--- | :--- | :--- |
-| **Required** | `"agent_id": 1` | Must be present with a valid value |
+| **Required** | `"role": "user"` | Must be present with a valid value |
 | **Server-generated** | Omit `"id"` | Server auto-generates |
 | **Optional with default** | Omit `"limit"` | Uses default value (usually `10`) |
-| **Optional, nullable** | `"deadline": null` | Can be omitted or explicitly set to `null` |
-| **Optional, non-nullable** | `"causality_chain": []` | Can be omitted (defaults to `[]`) but cannot be `null` |
+| **Optional, nullable** | `"case_id": null` | Can be omitted or explicitly set to `null` |
 
 ## Default query limits
 
@@ -65,25 +64,25 @@ The server automatically generates certain fields if you omit them:
 | Redb cache | 64 MB | 256 MB |
 | Louvain analytics | Disabled | Enabled |
 
-## Endpoint groups
+## Core endpoints
 
 <CardGroup cols={2}>
-  <Card title="Events" icon="bolt" href="/api-reference/events/process-event">
-    Ingest events, retrieve event history, and view episodes.
+  <Card title="Messages" icon="message" href="/api-reference/messages/send-message">
+    Send individual messages in real time with deferred compaction.
   </Card>
-  <Card title="Memory" icon="brain" href="/api-reference/memory/get-agent-memories">
-    Query long-term memories by agent or by context.
+  <Card title="Conversations" icon="comments" href="/api-reference/conversations/ingest">
+    Ingest multi-session conversations with inline compaction.
   </Card>
-  <Card title="Strategies" icon="chess" href="/api-reference/strategies/get-strategies">
-    Retrieve and search learned behavioral strategies.
+  <Card title="Query" icon="magnifying-glass" href="/api-reference/nlq/query">
+    Ask questions about the graph in natural language.
   </Card>
   <Card title="Claims" icon="quote-left" href="/api-reference/claims/list-claims">
     List, get, and search extracted facts.
   </Card>
+  <Card title="Memory" icon="brain" href="/api-reference/memory/get-agent-memories">
+    Query long-term memories by agent or by context.
+  </Card>
   <Card title="Graph" icon="diagram-project" href="/api-reference/graph/get-graph">
     Explore the knowledge graph, analytics, and communities.
-  </Card>
-  <Card title="System" icon="heart-pulse" href="/api-reference/system/health">
-    Health checks and server status.
   </Card>
 </CardGroup>

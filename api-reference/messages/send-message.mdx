@@ -1,0 +1,55 @@
+---
+title: "Send message"
+api: "POST /api/messages"
+description: "Send a single message for real-time ingestion with deferred LLM compaction."
+---
+
+Send a single message for real-time ingestion. The message is processed through the graph pipeline immediately and buffered for deferred LLM compaction. Compaction triggers automatically when the buffer reaches 6 messages or 30 seconds.
+
+<ParamField body="role" type="string" required>
+  `"user"` or `"assistant"`
+</ParamField>
+
+<ParamField body="content" type="string" required>
+  Message text
+</ParamField>
+
+<ParamField body="case_id" type="string">
+  Case identifier for entity resolution continuity. Auto-generated UUID if omitted. Use the same `case_id` across calls for stable entity resolution and automatic deduplication.
+</ParamField>
+
+<ParamField body="session_id" type="string">
+  Session identifier. Auto-generated if omitted.
+</ParamField>
+
+<ParamField body="include_assistant_facts" type="boolean" default="false">
+  If `true`, extract facts from assistant messages too.
+</ParamField>
+
+<ResponseExample>
+```json 200
+{
+  "buffered": true,
+  "buffer_size": 3,
+  "compaction": null
+}
+```
+
+```json 200 (compaction triggered)
+{
+  "buffered": false,
+  "buffer_size": 0,
+  "compaction": {
+    "facts_extracted": 3,
+    "goals_extracted": 0,
+    "goals_deduplicated": 0,
+    "procedural_steps": 0,
+    "memories_created": false,
+    "memories_updated": 0,
+    "memories_deleted": 0,
+    "playbooks_extracted": 0,
+    "llm_success": true
+  }
+}
+```
+</ResponseExample>
